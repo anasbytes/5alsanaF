@@ -1,31 +1,45 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { AuthContext } from '../utils/AuthContext';
 
 const BACKEND_URL = 'https://freeway-chest-calzone.ngrok-free.dev';
 
 export default function HostBookingsScreen({ navigation }) {
+    const { signOut } = useContext(AuthContext);
+
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [updatingId, setUpdatingId] = useState(null);
 
     const fetchHostBookings = useCallback(async () => {
         try {
             const token = await AsyncStorage.getItem('token');
-            const userId = await AsyncStorage.getItem('user_id');
-            
-            const response = await fetch(`${BACKEND_URL}/bookings/host/${userId}`, {
+
+            const response = await fetch(`${BACKEND_URL}/bookings/host/me`, {
                 headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
             });
-            
+
+            if (response.status === 401 || response.status === 403) {
+                await signOut();
+                return;
+            }
+
             const data = await response.json();
             if (response.ok) {
                 const sorted = data.sort((a, b) => {
                     const statusPriority = { 'pending': 0, 'confirmed': 1, 'completed': 2, 'cancelled': 3 };
                     const pA = statusPriority[a.status.toLowerCase()] ?? 4;
                     const pB = statusPriority[b.status.toLowerCase()] ?? 4;
+
                     if (pA !== pB) return pA - pB;
-                    return new Date(b.booking_date) - new Date(a.booking_date);
+
+                    const dateA = new Date(a.booking_date);
+                    const dateB = new Date(b.booking_date);
+                    if (dateA.getTime() !== dateB.getTime()) return dateA - dateB;
+
+                    return a.start_time.localeCompare(b.start_time);
                 });
                 setBookings(sorted);
             }
@@ -34,7 +48,7 @@ export default function HostBookingsScreen({ navigation }) {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [signOut]);
 
     React.useEffect(() => {
         const unsubscribe = navigation.addListener('focus', () => {
@@ -44,6 +58,7 @@ export default function HostBookingsScreen({ navigation }) {
     }, [navigation, fetchHostBookings]);
 
     const updateBookingStatus = async (bookingId, newStatus) => {
+        setUpdatingId(bookingId);
         try {
             const token = await AsyncStorage.getItem('token');
             const response = await fetch(`${BACKEND_URL}/bookings/${bookingId}/status`, {
@@ -56,6 +71,11 @@ export default function HostBookingsScreen({ navigation }) {
                 body: JSON.stringify({ status: newStatus })
             });
 
+            if (response.status === 401 || response.status === 403) {
+                await signOut();
+                return;
+            }
+
             if (response.ok) {
                 fetchHostBookings();
             } else {
@@ -64,19 +84,22 @@ export default function HostBookingsScreen({ navigation }) {
             }
         } catch (error) {
             console.error('Error updating status:', error);
+            Alert.alert('Network Error', 'Please check your connection and try again.');
+        } finally {
+            setUpdatingId(null);
         }
     };
 
     const confirmAction = (booking, action) => {
         const title = action === 'confirmed' ? 'Accept Booking' : 'Decline Booking';
         const message = `Are you sure you want to ${action === 'confirmed' ? 'accept' : 'decline'} this booking for ${booking.facility_name}?`;
-        
+
         Alert.alert(title, message, [
             { text: 'Cancel', style: 'cancel' },
-            { 
-                text: action === 'confirmed' ? 'Accept' : 'Decline', 
+            {
+                text: action === 'confirmed' ? 'Accept' : 'Decline',
                 style: action === 'confirmed' ? 'default' : 'destructive',
-                onPress: () => updateBookingStatus(booking.id, action) 
+                onPress: () => updateBookingStatus(booking.id, action)
             }
         ]);
     };
@@ -103,7 +126,9 @@ export default function HostBookingsScreen({ navigation }) {
         const statusStyle = getStatusStyle(item.status);
         const dateObj = new Date(item.booking_date);
         const formattedDate = dateObj.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
-        
+
+        const isCurrentlyUpdating = updatingId === item.id;
+
         return (
             <View style={styles.card}>
                 <View style={styles.cardHeader}>
@@ -129,7 +154,11 @@ export default function HostBookingsScreen({ navigation }) {
                     </View>
                     <View style={styles.infoRow}>
                         <Ionicons name="cash-outline" size={16} color="#888" />
-                        <Text style={styles.infoText}>Total: <Text style={styles.priceText}>{item.total_price} EGP</Text></Text>
+                        <Text style={styles.infoText}>
+                            Total: <Text style={styles.priceText}>
+                                {parseFloat(item.total_price).toFixed(2).replace(/\.00$/, '')} EGP
+                            </Text>
+                        </Text>
                     </View>
                 </View>
 
@@ -137,11 +166,23 @@ export default function HostBookingsScreen({ navigation }) {
                     <>
                         <View style={styles.divider} />
                         <View style={styles.actionsContainer}>
-                            <TouchableOpacity style={styles.declineBtn} onPress={() => confirmAction(item, 'cancelled')}>
+                            <TouchableOpacity
+                                style={[styles.declineBtn, isCurrentlyUpdating && { opacity: 0.5 }]}
+                                onPress={() => confirmAction(item, 'cancelled')}
+                                disabled={isCurrentlyUpdating}
+                            >
                                 <Text style={styles.declineBtnText}>Decline</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.acceptBtn} onPress={() => confirmAction(item, 'confirmed')}>
-                                <Text style={styles.acceptBtnText}>Accept Booking</Text>
+                            <TouchableOpacity
+                                style={[styles.acceptBtn, isCurrentlyUpdating && { opacity: 0.5 }]}
+                                onPress={() => confirmAction(item, 'confirmed')}
+                                disabled={isCurrentlyUpdating}
+                            >
+                                {isCurrentlyUpdating ? (
+                                    <ActivityIndicator size="small" color="#FFF" />
+                                ) : (
+                                    <Text style={styles.acceptBtnText}>Accept Booking</Text>
+                                )}
                             </TouchableOpacity>
                         </View>
                     </>

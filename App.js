@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -6,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SplashScreen from 'expo-splash-screen';
 
+import { AuthContext } from './utils/AuthContext';
 import LoginScreen from './screens/LoginScreen';
 import HomeScreen from './screens/HomeScreen';
 import SearchScreen from './screens/SearchScreen';
@@ -41,7 +43,7 @@ function PlayerTabs() {
         },
         tabBarActiveTintColor: '#E8751A',
         tabBarInactiveTintColor: '#888888',
-        tabBarStyle: { backgroundColor: '#F9F6F0', borderTopColor: '#13294B', borderTopWidth: 1.5 },
+        tabBarStyle: { backgroundColor: '#F9F6F0', borderTopColor: '#D4D0C8', borderTopWidth: 1 },
         headerShown: false,
       })}
     >
@@ -68,7 +70,7 @@ function HostTabs() {
         },
         tabBarActiveTintColor: '#E8751A',
         tabBarInactiveTintColor: '#888888',
-        tabBarStyle: { backgroundColor: '#F9F6F0', borderTopColor: '#13294B', borderTopWidth: 1.5 },
+        tabBarStyle: { backgroundColor: '#F9F6F0', borderTopColor: '#D4D0C8', borderTopWidth: 1 },
         headerShown: false,
       })}
     >
@@ -81,38 +83,77 @@ function HostTabs() {
   );
 }
 
-function MainTabs() {
-  const [role, setRole] = useState(null);
+function RootNavigator() {
+  const { userToken, userRole, isLoading } = React.useContext(AuthContext);
 
-  useEffect(() => {
-    AsyncStorage.getItem('role').then(r => setRole(r));
-  }, []);
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F9F6F0' }}>
+        <ActivityIndicator size="large" color="#E8751A" />
+      </View>
+    );
+  }
 
-  if (role === null) return null;
-  return role === 'host' ? <HostTabs /> : <PlayerTabs />;
+  return (
+    <NavigationContainer>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {userToken == null ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        ) : (
+          <Stack.Screen name="MainTabs" component={userRole === 'host' ? HostTabs : PlayerTabs} />
+        )}
+      </Stack.Navigator>
+    </NavigationContainer>
+  );
 }
 
 export default function App() {
   const [appReady, setAppReady] = useState(false);
+  const [authState, setAuthState] = useState({
+    isLoading: true,
+    userToken: null,
+    userRole: null,
+  });
 
   useEffect(() => {
     async function prepare() {
       await SplashScreen.preventAutoHideAsync();
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await SplashScreen.hideAsync();
-      setAppReady(true);
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const role = await AsyncStorage.getItem('role');
+        setAuthState({ isLoading: false, userToken: token, userRole: role });
+      } catch (e) {
+        console.warn(e);
+        setAuthState({ isLoading: false, userToken: null, userRole: null });
+      } finally {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        await SplashScreen.hideAsync();
+        setAppReady(true);
+      }
     }
     prepare();
   }, []);
 
+  const authContextValue = React.useMemo(
+    () => ({
+      signIn: async (token, role) => {
+        await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('role', role);
+        setAuthState({ isLoading: false, userToken: token, userRole: role });
+      },
+      signOut: async () => {
+        await AsyncStorage.clear();
+        setAuthState({ isLoading: false, userToken: null, userRole: null });
+      },
+    }),
+    []
+  );
+
   if (!appReady) return null;
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Login">
-        <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="MainTabs" component={MainTabs} options={{ headerShown: false }} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <AuthContext.Provider value={{ ...authState, ...authContextValue }}>
+      <RootNavigator />
+    </AuthContext.Provider>
   );
 }

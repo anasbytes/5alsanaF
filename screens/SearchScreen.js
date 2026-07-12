@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { AuthContext } from '../utils/AuthContext';
 
 export default function SearchScreen({ navigation }) {
+    const { signOut } = useContext(AuthContext);
+
     const [facilities, setFacilities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -19,11 +23,23 @@ export default function SearchScreen({ navigation }) {
 
     const fetchFacilities = async () => {
         try {
+            const token = await AsyncStorage.getItem('token');
             const response = await fetch('https://freeway-chest-calzone.ngrok-free.dev/facilities', {
-                headers: { 'ngrok-skip-browser-warning': 'true' }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true'
+                }
             });
-            const data = await response.json();
-            setFacilities(data);
+
+            if (response.status === 401 || response.status === 403) {
+                await signOut();
+                return;
+            }
+
+            if (response.ok) {
+                const data = await response.json();
+                setFacilities(data);
+            }
         } catch (error) {
             console.error('Error fetching facilities:', error);
         } finally {
@@ -70,9 +86,9 @@ export default function SearchScreen({ navigation }) {
                     </View>
                     <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
                 </View>
-                <Text style={styles.cardPrice}>{item.price_per_hour} <Text style={{fontSize: 11}}>EGP</Text></Text>
+                <Text style={styles.cardPrice}>{item.price_per_hour} <Text style={{ fontSize: 11 }}>EGP</Text></Text>
             </View>
-            
+
             <View style={styles.cardBody}>
                 <View style={styles.badge}>
                     <Text style={styles.badgeText}>{item.type.toUpperCase()}</Text>
@@ -102,6 +118,7 @@ export default function SearchScreen({ navigation }) {
                         value={searchQuery}
                         onChangeText={setSearchQuery}
                         autoCapitalize="none"
+                        clearButtonMode="always"
                     />
                     {searchQuery.length > 0 && (
                         <TouchableOpacity style={styles.clearButton} onPress={() => setSearchQuery('')}>
@@ -116,7 +133,7 @@ export default function SearchScreen({ navigation }) {
                 showsHorizontalScrollIndicator={false}
                 data={categories}
                 keyExtractor={(item) => item}
-                style={{ flexGrow: 0, flexShrink: 0 }} 
+                style={{ flexGrow: 0, flexShrink: 0 }}
                 contentContainerStyle={styles.categoriesContainer}
                 renderItem={({ item }) => (
                     <TouchableOpacity
@@ -129,7 +146,7 @@ export default function SearchScreen({ navigation }) {
             />
 
             <View style={styles.sortContainer}>
-                <Ionicons name="filter" size={14} color="#13294B" style={{marginRight: 6}}/>
+                <Ionicons name="filter" size={14} color="#13294B" style={{ marginRight: 6 }} />
                 {sortOptions.map(option => (
                     <TouchableOpacity
                         key={option}
@@ -148,9 +165,11 @@ export default function SearchScreen({ navigation }) {
                     data={filteredFacilities}
                     keyExtractor={(item) => item.id.toString()}
                     renderItem={renderFacility}
-                    style={{ flex: 1 }} 
+                    style={{ flex: 1 }}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
+                    keyboardShouldPersistTaps="handled"
+                    keyboardDismissMode="on-drag"
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="search-outline" size={50} color="#D0D0D0" />
@@ -168,81 +187,69 @@ const styles = StyleSheet.create({
     header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 15 },
     headerTitle: { fontSize: 28, fontWeight: '800', color: '#13294B' },
     headerSubText: { fontSize: 14, color: '#888888', marginTop: 4 },
-    
-    // Search Bar - Crisper edges, visible structure
     searchContainer: { paddingHorizontal: 20, marginBottom: 15 },
     searchBar: {
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
         height: 48,
-        borderRadius: 10, // Sharper than 14
+        borderRadius: 10,
         paddingHorizontal: 15,
         borderWidth: 1,
-        borderColor: '#D4D0C8', // Slightly more visible than before
+        borderColor: '#D4D0C8',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04, // Very subtle, hard shadow
+        shadowOpacity: 0.04,
         shadowRadius: 2,
         elevation: 1,
     },
     searchIcon: { marginRight: 10 },
     searchInput: { flex: 1, fontSize: 15, color: '#13294B', height: '100%', fontWeight: '500' },
     clearButton: { padding: 4 },
-    
-    // Categories - Tag style instead of bubbles
     categoriesContainer: { paddingLeft: 20, paddingBottom: 10, paddingRight: 20 },
     categoryBadge: {
-        paddingHorizontal: 16, 
-        height: 38, 
-        borderRadius: 10, // Crisper tag look
-        backgroundColor: '#FFFFFF', 
-        marginRight: 10, 
-        borderWidth: 1, 
-        borderColor: '#D4D0C8', // Defined edge
-        justifyContent: 'center', 
+        paddingHorizontal: 16,
+        height: 38,
+        borderRadius: 10,
+        backgroundColor: '#FFFFFF',
+        marginRight: 10,
+        borderWidth: 1,
+        borderColor: '#D4D0C8',
+        justifyContent: 'center',
         alignItems: 'center',
     },
-    activeCategoryBadge: { backgroundColor: '#13294B', borderColor: '#13294B' }, // Solid navy for active
+    activeCategoryBadge: { backgroundColor: '#13294B', borderColor: '#13294B' },
     categoryText: { fontSize: 13, fontWeight: '700', color: '#888888' },
     activeCategoryText: { color: '#FFFFFF' },
-    
-    // Sort Options
     sortContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 15, gap: 8, flexWrap: 'wrap' },
     sortButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: 'transparent', borderWidth: 1, borderColor: '#D4D0C8' },
     activeSortButton: { backgroundColor: '#E0DDD6', borderColor: '#D4D0C8' },
     sortText: { fontSize: 12, fontWeight: '700', color: '#888888' },
     activeSortText: { color: '#13294B' },
-    
-    // Cards - Structured and planted
     listContainer: { paddingHorizontal: 20, paddingBottom: 20 },
-    card: { 
-        backgroundColor: '#FFFFFF', 
-        borderRadius: 12, // Sharp but not totally square
-        borderWidth: 1, 
-        borderColor: '#D4D0C8', // Crisp outline
-        padding: 16, 
-        marginBottom: 14, 
-        shadowColor: '#13294B', 
-        shadowOffset: { width: 0, height: 2 }, // Tighter shadow offset
-        shadowOpacity: 0.06, // Less blur, more structure
-        shadowRadius: 3, 
-        elevation: 2 
+    card: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D4D0C8',
+        padding: 16,
+        marginBottom: 14,
+        shadowColor: '#13294B',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.06,
+        shadowRadius: 3,
+        elevation: 2
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
     titleContainer: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 10 },
     iconSquare: { width: 30, height: 30, borderRadius: 8, backgroundColor: '#FFF3E8', justifyContent: 'center', alignItems: 'center', marginRight: 12, borderWidth: 1, borderColor: 'rgba(232, 117, 26, 0.1)' },
     cardTitle: { fontSize: 16, fontWeight: '800', color: '#13294B', flexShrink: 1, letterSpacing: 0.2 },
     cardPrice: { fontSize: 16, fontWeight: '800', color: '#E8751A' },
-    
-    // Body Elements
     cardBody: { flexDirection: 'row', alignItems: 'center' },
-    badge: { backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 }, // Very sharp inner badge
+    badge: { backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
     badgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
     locationContainer: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginLeft: 10 },
     cardLocation: { fontSize: 13, color: '#555555', marginLeft: 4, flexShrink: 1, fontWeight: '600' },
-    
-    // Empty State
     emptyContainer: { alignItems: 'center', marginTop: 60 },
     emptyText: { textAlign: 'center', marginTop: 15, fontSize: 15, color: '#888888', fontWeight: '600' },
 });

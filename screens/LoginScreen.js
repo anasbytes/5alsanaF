@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import React, { useState, useContext } from 'react';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, SafeAreaView, Keyboard, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { registerForPushNotifications, savePushTokenToBackend } from '../utils/notifications';
+import { AuthContext } from '../utils/AuthContext';
 
-const LoginScreen = ({ navigation }) => {
+const LoginScreen = () => {
+    const { signIn } = useContext(AuthContext);
+
     const [isLogin, setIsLogin] = useState(true);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [language, setLanguage] = useState('en');
     const [role, setRole] = useState('player');
 
@@ -18,10 +21,7 @@ const LoginScreen = ({ navigation }) => {
     const [errorKey, setErrorKey] = useState('');
 
     const fadeAnim = useSharedValue(1);
-
-    const animatedStyle = useAnimatedStyle(() => {
-        return { opacity: fadeAnim.value };
-    });
+    const animatedStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value }));
 
     const triggerFade = (stateUpdater) => {
         fadeAnim.value = withTiming(0, { duration: 150 });
@@ -32,86 +32,50 @@ const LoginScreen = ({ navigation }) => {
     };
 
     const handleSubmit = async () => {
+        Keyboard.dismiss();
         setErrorKey('');
+        setIsSubmitting(true);
+
         const backendUrl = 'https://freeway-chest-calzone.ngrok-free.dev';
 
-        if (isLogin) {
-            try {
-                const response = await fetch(`${backendUrl}/auth/login`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true',
-                    },
-                    body: JSON.stringify({ identifier, password }),
-                });
+        try {
+            const endpoint = isLogin ? '/auth/login' : '/auth/register';
+            const body = isLogin
+                ? { identifier, password }
+                : { username, email, phone_number: phoneNumber, password, role };
 
-                const data = await response.json();
+            const response = await fetch(`${backendUrl}${endpoint}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true',
+                },
+                body: JSON.stringify(body),
+            });
 
-                if (response.ok) {
-                    await AsyncStorage.setItem('token', data.token);
-                    await AsyncStorage.setItem('role', data.user.role);
-                    const actualUserId = data.user?.id || data.userId || data.user_id || data.id;
-                    if (actualUserId) {
-                        await AsyncStorage.setItem('user_id', actualUserId.toString());
-                    }
+            const data = await response.json();
+
+            if (response.ok) {
+                await signIn(data.token, data.user.role);
+
                 try {
                     const pushToken = await registerForPushNotifications();
                     if (pushToken) await savePushTokenToBackend(pushToken);
                 } catch (e) {
-                    console.log('Push token error:', e.message);
+                    console.log('Push setup failed (non-critical):', e.message);
                 }
-                    navigation.replace('MainTabs');
-                } else {
+            } else {
+                if (isLogin) {
                     setErrorKey('invalidCredentials');
-                }
-            } catch (err) {
-                setErrorKey('networkError');
-            }
-        } else {
-            try {
-                const response = await fetch(`${backendUrl}/auth/register`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true',
-                    },
-                    body: JSON.stringify({
-                        username,
-                        email,
-                        phone_number: phoneNumber,
-                        password,
-                        role
-                    }),
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    await AsyncStorage.setItem('token', data.token);
-                    await AsyncStorage.setItem('role', data.user.role);
-                    const actualUserId = data.user?.id || data.userId || data.user_id || data.id;
-                    if (actualUserId) {
-                        await AsyncStorage.setItem('user_id', actualUserId.toString());
-                    }
-                    try {
-                            const pushToken = await registerForPushNotifications();
-                            if (pushToken) await savePushTokenToBackend(pushToken);
-                        } catch (e) {
-                            console.log('Push token error:', e.message);
-                        }
-                    navigation.replace('MainTabs');
                 } else {
                     const backendError = String(data.error || '').toLowerCase();
-                    if (backendError.includes('exist') || backendError.includes('taken')) {
-                        setErrorKey('userExists');
-                    } else {
-                        setErrorKey('signupFailed');
-                    }
+                    setErrorKey(backendError.includes('taken') ? 'userExists' : 'signupFailed');
                 }
-            } catch (err) {
-                setErrorKey('networkError');
             }
+        } catch (err) {
+            setErrorKey('networkError');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -127,7 +91,7 @@ const LoginScreen = ({ navigation }) => {
             player: 'Player',
             host: 'Host',
             english: 'English',
-            arabic: 'العربية',
+            arabic: 'Arabic',
             invalidCredentials: 'Invalid credentials. Please try again.',
             signupFailed: 'Failed to create account. Please check your inputs.',
             networkError: 'Network Error. Please check your connection.',
@@ -155,8 +119,7 @@ const LoginScreen = ({ navigation }) => {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={[styles.innerContainer, { direction: language === 'ar' ? 'rtl' : 'ltr' }]}>
-                
-                {/* Language Toggle */}
+
                 <View style={styles.langContainer}>
                     <TouchableOpacity
                         style={[styles.langButton, language === 'en' && styles.activeLangButton]}
@@ -172,7 +135,6 @@ const LoginScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Main Auth Toggle */}
                 <View style={styles.toggleContainer}>
                     <TouchableOpacity
                         style={[styles.toggleButton, !isLogin && styles.activeToggle]}
@@ -188,7 +150,6 @@ const LoginScreen = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
 
-                {/* Form Card */}
                 <Animated.View style={[styles.formContainer, animatedStyle]}>
                     <Text style={styles.headerTitle}>{isLogin ? t[language].logIn : t[language].signUp}</Text>
 
@@ -202,6 +163,7 @@ const LoginScreen = ({ navigation }) => {
                             value={identifier}
                             onChangeText={setIdentifier}
                             autoCapitalize="none"
+                            editable={!isSubmitting}
                         />
                     ) : (
                         <TextInput
@@ -211,6 +173,7 @@ const LoginScreen = ({ navigation }) => {
                             value={username}
                             onChangeText={setUsername}
                             autoCapitalize="none"
+                            editable={!isSubmitting}
                         />
                     )}
 
@@ -223,6 +186,7 @@ const LoginScreen = ({ navigation }) => {
                                 value={phoneNumber}
                                 onChangeText={setPhoneNumber}
                                 keyboardType="phone-pad"
+                                editable={!isSubmitting}
                             />
                             <TextInput
                                 style={styles.input}
@@ -232,6 +196,7 @@ const LoginScreen = ({ navigation }) => {
                                 onChangeText={setEmail}
                                 keyboardType="email-address"
                                 autoCapitalize="none"
+                                editable={!isSubmitting}
                             />
                         </>
                     )}
@@ -243,6 +208,7 @@ const LoginScreen = ({ navigation }) => {
                         value={password}
                         onChangeText={setPassword}
                         secureTextEntry={true}
+                        editable={!isSubmitting}
                     />
 
                     {!isLogin && (
@@ -262,12 +228,19 @@ const LoginScreen = ({ navigation }) => {
                         </View>
                     )}
 
-                    <TouchableOpacity style={styles.submitButton} onPress={handleSubmit}>
-                        <Text style={styles.submitButtonText}>{isLogin ? t[language].logIn : t[language].signUp}</Text>
+                    <TouchableOpacity
+                        style={[styles.submitButton, isSubmitting && { opacity: 0.7 }]}
+                        onPress={handleSubmit}
+                        disabled={isSubmitting}
+                    >
+                        {isSubmitting ? (
+                            <ActivityIndicator color="#FFF" />
+                        ) : (
+                            <Text style={styles.submitButtonText}>{isLogin ? t[language].logIn : t[language].signUp}</Text>
+                        )}
                     </TouchableOpacity>
                 </Animated.View>
 
-                {/* Logo */}
                 <View style={styles.logoContainer}>
                     <Image
                         source={require('../assets/logo.png')}
@@ -277,7 +250,7 @@ const LoginScreen = ({ navigation }) => {
                         transition={200}
                     />
                 </View>
-                
+
             </View>
         </SafeAreaView>
     );
@@ -286,8 +259,6 @@ const LoginScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F9F6F0' },
     innerContainer: { flex: 1, paddingHorizontal: 25, justifyContent: 'center', paddingBottom: 140, paddingTop: 30 },
-    
-    // Language Toggle
     langContainer: {
         flexDirection: 'row', backgroundColor: '#F9F6F0', borderRadius: 12, width: 170,
         alignSelf: 'center', padding: 4, marginBottom: 35, borderWidth: 1, borderColor: '#D4D0C8',
@@ -299,55 +270,42 @@ const styles = StyleSheet.create({
         borderWidth: 1, borderColor: '#EAE6DF'
     },
     langText: { fontSize: 12, fontWeight: '800', color: '#888888', textTransform: 'uppercase' },
-    activeLangText: { color: '#13294B' }, 
-    
-    // Main Toggle (Login / Signup)
+    activeLangText: { color: '#13294B' },
     toggleContainer: {
         flexDirection: 'row', backgroundColor: '#F9F6F0', borderRadius: 14, height: 52,
         marginBottom: 20, borderWidth: 1, borderColor: '#D4D0C8', padding: 5
     },
     toggleButton: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 10 },
-    activeToggle: { backgroundColor: '#13294B' }, 
+    activeToggle: { backgroundColor: '#13294B' },
     toggleText: { fontSize: 14, fontWeight: '800', color: '#888888' },
     activeToggleText: { color: '#FFFFFF' },
-    
-    // Form Card
-    formContainer: { 
-        width: '100%', backgroundColor: '#FFFFFF', padding: 25, borderRadius: 16, 
-        borderWidth: 1, borderColor: '#D4D0C8', 
-        shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3 
+    formContainer: {
+        width: '100%', backgroundColor: '#FFFFFF', padding: 25, borderRadius: 16,
+        borderWidth: 1, borderColor: '#D4D0C8',
+        shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 3
     },
     headerTitle: { fontSize: 26, fontWeight: '900', color: '#13294B', textAlign: 'center', marginBottom: 20, letterSpacing: -0.5 },
     errorText: { color: '#D32F2F', fontSize: 14, fontWeight: '800', textAlign: 'center', marginBottom: 15 },
-    
-    // Inputs
     input: {
         backgroundColor: '#F9F6F0', height: 52, borderRadius: 12, paddingHorizontal: 15,
         marginBottom: 15, borderWidth: 1, borderColor: '#D4D0C8', fontSize: 15, color: '#13294B', fontWeight: '600'
     },
-    
-    // Role Toggle
     roleContainer: {
         flexDirection: 'row', backgroundColor: '#F9F6F0', borderRadius: 12, height: 45,
         marginTop: 5, marginBottom: 20, borderWidth: 1, borderColor: '#D4D0C8', padding: 4
     },
     roleButton: { flex: 1, justifyContent: 'center', alignItems: 'center', borderRadius: 8 },
-    activeRole: { backgroundColor: '#13294B' }, 
+    activeRole: { backgroundColor: '#13294B' },
     roleText: { fontSize: 13, fontWeight: '800', color: '#888888' },
     activeRoleText: { color: '#FFFFFF' },
-    
-    // Submit Button
     submitButton: {
         backgroundColor: '#E8751A', height: 52, justifyContent: 'center', alignItems: 'center',
         borderRadius: 12, marginTop: 10, borderWidth: 1, borderColor: '#E8751A',
-        shadowColor: '#E8751A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 
+        shadowColor: '#E8751A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3
     },
     submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
-    
-    // Logo
     logoContainer: { position: 'absolute', bottom: 35, alignSelf: 'center', zIndex: -1 },
     logoImage: { width: 90, height: 90, borderRadius: 18 },
 });
-
 
 export default LoginScreen;

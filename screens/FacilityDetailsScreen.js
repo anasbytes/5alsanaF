@@ -1,24 +1,26 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, Modal, Animated, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, Modal, Animated, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons'; 
 
 export default function FacilityDetailsScreen({ route, navigation }) {
-     const { facility, booking } = route.params;
+    const { facility, booking, onGoBack } = route.params; // NEW: Extracted onGoBack
 
     const deriveStatus = (b) => {
-            if (!b) return null;
-            if (b.status === 'cancelled') return 'CANCELLED';
-            if (b.status === 'completed') return 'COMPLETED';
-            if (b.status === 'pending') return 'PENDING';
-            return 'CONFIRMED';
-        };
+        if (!b) return null;
+        if (b.status === 'cancelled') return 'CANCELLED';
+        if (b.status === 'completed') return 'COMPLETED';
+        if (b.status === 'pending') return 'PENDING';
+        return 'CONFIRMED';
+    };
 
     const [currentBookingStatus, setCurrentBookingStatus] = useState(deriveStatus(booking));
-    
     const [isBusy, setIsBusy] = useState(false);
     const [facilityBookings, setFacilityBookings] = useState([]);
+    
+    // NEW: Loading states for network requests
+    const [isSubmitting, setIsSubmitting] = useState(false); 
 
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [bookingStep, setBookingStep] = useState('calendar'); 
@@ -74,7 +76,6 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 setFacilityBookings(bookings);
 
                 const currentNow = new Date();
-                
                 const bookedTimesToday = bookings.filter(b => {
                     if (!b.booking_date) return false;
                     const bDate = new Date(b.booking_date).toISOString().split('T')[0];
@@ -98,7 +99,6 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                         }
                     }
                 }
-
                 setIsBusy(!hasAvailableSlot);
             }
         } catch (error) {
@@ -118,7 +118,6 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 setEndTime(null);
                 setSelectionMode('start');
             }
-            
             Animated.timing(fadeAnim, {
                 toValue: 1,
                 duration: 250, 
@@ -142,19 +141,14 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     };
 
     const getDisplayedTimeSlots = () => {
-        let availableSlots = timeSlots;
-
         const bookedTimesOnDate = facilityBookings.filter(b => {
             const bDate = new Date(b.booking_date).toISOString().split('T')[0];
             return bDate === selectedDate && b.status !== 'cancelled';
         });
 
-        availableSlots = availableSlots.filter(time => {
-            const time24 = formatTimeTo24Hour(time);
-            const isBooked = bookedTimesOnDate.some(b => time24 >= b.start_time && time24 < b.end_time);
-            return !isBooked; 
-        });
+        let availableSlots = timeSlots;
 
+        // If today, filter out past times
         if (selectedDate === todayStr) {
             const currentTime = new Date();
             availableSlots = availableSlots.filter(time => {
@@ -167,11 +161,31 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         }
 
         if (selectionMode === 'start') {
-            return availableSlots;
+            // For Start Time, just filter out explicitly booked slots
+            return availableSlots.filter(time => {
+                const time24 = formatTimeTo24Hour(time);
+                return !bookedTimesOnDate.some(b => time24 >= b.start_time && time24 < b.end_time);
+            });
         } else {
-            if (!startTime) return availableSlots;
+            // BUG FIX: The Swiss Cheese Logic Fix
+            // For End Time, they must select a time AFTER start time, 
+            // AND the duration cannot overlap an existing booking.
+            if (!startTime) return [];
+            
             const startIndex = availableSlots.indexOf(startTime);
-            return startIndex !== -1 ? availableSlots.slice(startIndex + 1) : availableSlots;
+            if (startIndex === -1) return [];
+
+            const start24 = formatTimeTo24Hour(startTime);
+            const possibleEndTimes = availableSlots.slice(startIndex + 1);
+
+            return possibleEndTimes.filter(endTimeCandidate => {
+                const end24 = formatTimeTo24Hour(endTimeCandidate);
+                // Check if any booking falls entirely or partially inside this duration
+                const hasOverlap = bookedTimesOnDate.some(b => {
+                    return (b.start_time < end24 && b.end_time > start24);
+                });
+                return !hasOverlap;
+            });
         }
     };
 
@@ -187,19 +201,12 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     };
 
     const handleBooking = async () => {
+        setIsSubmitting(true); // Lock the button
         try {
             const token = await AsyncStorage.getItem('token');
-            const userId = await AsyncStorage.getItem('user_id'); 
-
-            if (!userId) {
-                alert("Error: User ID not found. Please log in again.");
-                return;
-            }
-
             const dbStartTime = formatTimeTo24Hour(startTime);
             const dbEndTime = formatTimeTo24Hour(endTime);
 
-            // FIX: Explicitly sending status: 'pending' so it routes to the Host Dashboard
             const response = await fetch(`https://freeway-chest-calzone.ngrok-free.dev/bookings`, {
                 method: 'POST',
                 headers: {
@@ -208,7 +215,6 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                     'ngrok-skip-browser-warning': 'true' 
                 },
                 body: JSON.stringify({
-                    user_id: parseInt(userId, 10),
                     facility_id: facility.id,
                     booking_date: selectedDate,
                     start_time: dbStartTime,
@@ -221,6 +227,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 alert('Request Sent! Waiting for host approval.');
                 setIsModalVisible(false); 
                 fetchFacilityAvailability(); 
+                onGoBack?.(); // NEW: Refresh previous screen
             } else {
                 const data = await response.json();
                 alert('Failed to book: ' + JSON.stringify(data.errors || data.error));
@@ -228,6 +235,8 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         } catch (error) {
             console.error("Booking error:", error);
             alert('Something went wrong connecting to the server.');
+        } finally {
+            setIsSubmitting(false); // Unlock the button
         }
     };
 
@@ -243,6 +252,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     };
 
     const confirmCancellation = async () => {
+        setIsSubmitting(true); // Lock the button
         try {
             const token = await AsyncStorage.getItem('token');
             const response = await fetch(`https://freeway-chest-calzone.ngrok-free.dev/bookings/${booking.id}/cancel`, {
@@ -255,12 +265,15 @@ export default function FacilityDetailsScreen({ route, navigation }) {
 
             if (response.ok) {
                 setCurrentBookingStatus('CANCELLED');
+                onGoBack?.(); // NEW: Tell previous screen to refresh!
                 Alert.alert("Success", "Your request has been cancelled.");
             } else {
                 Alert.alert("Error", "Failed to cancel. Please try again.");
             }
         } catch (error) {
             console.error("Cancellation Error:", error);
+        } finally {
+            setIsSubmitting(false); // Unlock the button
         }
     };
 
@@ -330,12 +343,16 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                                     styles.bookButton, 
                                     isCancelledOrCompleted ? styles.bookButtonDisabled : styles.cancelButtonActive
                                 ]}
-                                disabled={isCancelledOrCompleted}
+                                disabled={isCancelledOrCompleted || isSubmitting}
                                 onPress={handleCancelPress}
                             >
-                                <Text style={styles.bookButtonText}>
-                                    {currentBookingStatus === 'CANCELLED' ? 'Cancelled' : currentBookingStatus === 'COMPLETED' ? 'Completed' : 'Cancel Request'}
-                                </Text>
+                                {isSubmitting ? (
+                                    <ActivityIndicator color="#FFF" />
+                                ) : (
+                                    <Text style={styles.bookButtonText}>
+                                        {currentBookingStatus === 'CANCELLED' ? 'Cancelled' : currentBookingStatus === 'COMPLETED' ? 'Completed' : 'Cancel Request'}
+                                    </Text>
+                                )}
                             </TouchableOpacity>
                         ) : (
                             <TouchableOpacity 
@@ -431,7 +448,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                                                 );
                                             })
                                         ) : (
-                                            <Text style={styles.noTimesText}>No available times left for this date.</Text>
+                                            <Text style={styles.noTimesText}>No valid slots available based on selection.</Text>
                                         )}
                                     </ScrollView>
 
@@ -448,10 +465,14 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                                                 styles.confirmBookingButton,
                                                 (!startTime || !endTime) && styles.confirmBookingDisabled
                                             ]}
-                                            disabled={!startTime || !endTime}
+                                            disabled={!startTime || !endTime || isSubmitting}
                                             onPress={handleBooking}
                                         >
-                                            <Text style={styles.confirmBookingText}>Send Request</Text>
+                                            {isSubmitting ? (
+                                                <ActivityIndicator color="#FFF" />
+                                            ) : (
+                                                <Text style={styles.confirmBookingText}>Send Request</Text>
+                                            )}
                                         </TouchableOpacity>
                                     </View>
 
