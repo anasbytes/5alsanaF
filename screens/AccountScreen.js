@@ -1,0 +1,305 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons'; 
+
+export default function AccountScreen({ navigation }) {
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [editing, setEditing] = useState(null);
+
+    const [username, setUsername] = useState('');
+    const [phone, setPhone] = useState('');
+    const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+
+    const BACKEND_URL = 'https://freeway-chest-calzone.ngrok-free.dev';
+
+    useEffect(() => {
+        fetchUser();
+    }, []);
+
+    const fetchUser = async () => {
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const userId = await AsyncStorage.getItem('user_id');
+            const response = await fetch(`${BACKEND_URL}/users/${userId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true'
+                }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setUser(data);
+                setUsername(data.username);
+                setPhone(data.phone_number);
+            }
+        } catch (error) {
+            console.error('Error fetching user:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSave = async () => {
+        if (editing === 'password') {
+            if (password !== confirmPassword) {
+                Alert.alert('Error', 'Passwords do not match.');
+                return;
+            }
+            if (password.length < 6) {
+                Alert.alert('Error', 'Password must be at least 6 characters.');
+                return;
+            }
+        }
+
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const userId = await AsyncStorage.getItem('user_id');
+
+            const body = {};
+            if (editing === 'username') body.username = username;
+            if (editing === 'phone') body.phone_number = phone;
+            if (editing === 'password') body.password = password;
+
+            const response = await fetch(`${BACKEND_URL}/users/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify(body)
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                setUser(data);
+                setEditing(null);
+                setPassword('');
+                setConfirmPassword('');
+                Alert.alert('Success', 'Your details have been updated.');
+            } else {
+                Alert.alert('Error', data.error || 'Something went wrong.');
+            }
+        } catch (error) {
+            console.error('Update error:', error);
+        }
+    };
+
+    const handleLogout = async () => {
+        Alert.alert('Log Out', 'Are you sure you want to log out?', [
+            { text: 'Cancel', style: 'cancel' },
+            {
+                text: 'Log Out',
+                style: 'destructive',
+                onPress: async () => {
+                    await AsyncStorage.clear();
+                    navigation.replace('Login');
+                }
+            }
+        ]);
+    };
+
+    if (loading) return <ActivityIndicator size="large" color="#E8751A" style={{ flex: 1, backgroundColor: '#F9F6F0' }} />;
+
+    return (
+        <SafeAreaView style={styles.safeArea}>
+            <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+                <Text style={styles.headerTitle}>Profile</Text>
+
+                {/* Dynamic Avatar Header */}
+                <View style={styles.avatarContainer}>
+                    <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarText}>
+                            {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
+                        </Text>
+                    </View>
+                    <Text style={styles.welcomeText}>Hello, {user?.username || 'User'}</Text>
+                    <Text style={styles.roleBadge}>{user?.role?.toUpperCase() || 'PLAYER'}</Text>
+                </View>
+
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Account Details</Text>
+
+                    {/* Username Row */}
+                    <View style={styles.row}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="person-outline" size={20} color="#13294B" />
+                        </View>
+                        <View style={styles.rowLeft}>
+                            <Text style={styles.rowLabel}>Username</Text>
+                            {editing === 'username' ? (
+                                <TextInput style={styles.input} value={username} onChangeText={setUsername} autoCapitalize="none" autoFocus />
+                            ) : (
+                                <Text style={styles.rowValue}>{user?.username}</Text>
+                            )}
+                        </View>
+                        {editing === 'username' ? (
+                            <View style={styles.editActions}>
+                                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                                    <Ionicons name="checkmark" size={20} color="#FFF" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setEditing(null)} style={styles.cancelButton}>
+                                    <Ionicons name="close" size={20} color="#888" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity onPress={() => setEditing('username')} style={styles.editIconBtn}>
+                                <Ionicons name="pencil" size={16} color="#E8751A" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    {/* Phone Row */}
+                    <View style={styles.row}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="call-outline" size={20} color="#13294B" />
+                        </View>
+                        <View style={styles.rowLeft}>
+                            <Text style={styles.rowLabel}>Phone Number</Text>
+                            {editing === 'phone' ? (
+                                <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoFocus />
+                            ) : (
+                                <Text style={styles.rowValue}>{user?.phone_number}</Text>
+                            )}
+                        </View>
+                        {editing === 'phone' ? (
+                            <View style={styles.editActions}>
+                                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                                    <Ionicons name="checkmark" size={20} color="#FFF" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => setEditing(null)} style={styles.cancelButton}>
+                                    <Ionicons name="close" size={20} color="#888" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity onPress={() => setEditing('phone')} style={styles.editIconBtn}>
+                                <Ionicons name="pencil" size={16} color="#E8751A" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+
+                    <View style={styles.divider} />
+
+                    {/* Password Row */}
+                    <View style={styles.row}>
+                        <View style={styles.iconContainer}>
+                            <Ionicons name="lock-closed-outline" size={20} color="#13294B" />
+                        </View>
+                        <View style={styles.rowLeft}>
+                            <Text style={styles.rowLabel}>Password</Text>
+                            {editing === 'password' ? (
+                                <View style={{ gap: 10, marginTop: 5 }}>
+                                    <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="New password" secureTextEntry autoFocus />
+                                    <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirm password" secureTextEntry />
+                                </View>
+                            ) : (
+                                <Text style={styles.rowValue}>••••••••</Text>
+                            )}
+                        </View>
+                        {editing === 'password' ? (
+                            <View style={styles.editActions}>
+                                <TouchableOpacity onPress={handleSave} style={styles.saveButton}>
+                                    <Ionicons name="checkmark" size={20} color="#FFF" />
+                                </TouchableOpacity>
+                                <TouchableOpacity onPress={() => { setEditing(null); setPassword(''); setConfirmPassword(''); }} style={styles.cancelButton}>
+                                    <Ionicons name="close" size={20} color="#888" />
+                                </TouchableOpacity>
+                            </View>
+                        ) : (
+                            <TouchableOpacity onPress={() => setEditing('password')} style={styles.editIconBtn}>
+                                <Ionicons name="pencil" size={16} color="#E8751A" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+
+                {/* Settings Section */}
+                <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Settings</Text>
+                    <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                        <Ionicons name="log-out-outline" size={20} color="#D32F2F" style={{ marginRight: 8 }} />
+                        <Text style={styles.logoutButtonText}>Log Out</Text>
+                    </TouchableOpacity>
+                </View>
+            </ScrollView>
+        </SafeAreaView>
+    );
+}
+
+const styles = StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: '#F9F6F0' },
+    container: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: '#13294B', marginBottom: 20 },
+    
+    // Avatar Styles
+    avatarContainer: { alignItems: 'center', marginBottom: 30 },
+    avatarCircle: { 
+        width: 80, height: 80, borderRadius: 40, backgroundColor: '#E8751A', 
+        justifyContent: 'center', alignItems: 'center', marginBottom: 12, 
+        shadowColor: '#E8751A', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.25, shadowRadius: 5, elevation: 4 
+    },
+    avatarText: { fontSize: 32, fontWeight: '800', color: '#FFFFFF' },
+    welcomeText: { fontSize: 20, fontWeight: '800', color: '#13294B', marginBottom: 6 },
+    roleBadge: { 
+        backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4, 
+        borderRadius: 6, // Sharper badge
+        overflow: 'hidden', color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 1 
+    },
+
+    // Section Styles (Sharpened)
+    section: { 
+        backgroundColor: '#FFFFFF', 
+        borderRadius: 12, // Crisper corners
+        borderWidth: 1, borderColor: '#D4D0C8', // Added structured border
+        padding: 20, marginBottom: 20, 
+        shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 // Tighter shadow
+    },
+    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#A0A0A0', marginBottom: 20, textTransform: 'uppercase', letterSpacing: 1.2 },
+    
+    // Row Styles
+    row: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 5 },
+    iconContainer: { 
+        width: 40, height: 40, borderRadius: 8, backgroundColor: '#F0F4F8', 
+        justifyContent: 'center', alignItems: 'center', marginRight: 15, marginTop: 2,
+        borderWidth: 1, borderColor: '#EAE6DF' // Added internal structure
+    },
+    rowLeft: { flex: 1, justifyContent: 'center', paddingTop: 2 },
+    rowLabel: { fontSize: 12, color: '#888888', fontWeight: '700', marginBottom: 6 },
+    rowValue: { fontSize: 15, color: '#13294B', fontWeight: '700' },
+    
+    // Inputs & Buttons
+    input: { 
+        backgroundColor: '#F9F6F0', borderRadius: 8, // Crisper
+        borderWidth: 1, borderColor: '#D4D0C8', // Standardized crisp border
+        paddingHorizontal: 15, paddingVertical: 10, fontSize: 15, color: '#13294B', fontWeight: '500' 
+    },
+    editIconBtn: { 
+        padding: 8, backgroundColor: '#FFF3E8', borderRadius: 8, marginTop: 4, 
+        borderWidth: 1, borderColor: 'rgba(232, 117, 26, 0.1)' 
+    },
+    editActions: { flexDirection: 'row', gap: 8, marginTop: 23, paddingLeft: 10 },
+    saveButton: { 
+        backgroundColor: '#E8751A', width: 40, height: 40, borderRadius: 8, 
+        justifyContent: 'center', alignItems: 'center',
+        shadowColor: '#E8751A', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 3 
+    },
+    cancelButton: { 
+        backgroundColor: '#F5F5F5', width: 40, height: 40, borderRadius: 8, 
+        justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#D4D0C8' 
+    },
+    divider: { height: 1, backgroundColor: '#EAE6DF', marginVertical: 15, marginLeft: 55 }, // Crisper line color
+    
+    // Logout
+    logoutButton: { 
+        flexDirection: 'row', backgroundColor: '#FFEBEE', padding: 14, 
+        borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 10,
+        borderWidth: 1, borderColor: 'rgba(211, 47, 47, 0.2)' // Sharp outline
+    },
+    logoutButtonText: { color: '#D32F2F', fontSize: 15, fontWeight: '800' },
+});

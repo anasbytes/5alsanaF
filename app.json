@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "e7gezly-frontend",
-    "slug": "e7gezly-frontend",
+    "name": "5alsana-frontend",
+    "slug": "5alsana-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#F9F6F0"
     },
     "ios": {
       "supportsTablet": true
