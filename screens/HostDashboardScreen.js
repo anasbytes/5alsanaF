@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { SafeAreaView, StyleSheet } from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 
@@ -6,9 +6,15 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 import MyFacilitiesScreen from './MyFacilitiesScreen';
 import HostBookingsScreen from './HostBookingsScreen';
 
+// 🌐 Import Language Context
+import { LanguageContext } from '../utils/LanguageContext';
+
 const TopTab = createMaterialTopTabNavigator();
 
 export default function HostDashboardScreen() {
+    // 🌐 Use Language Context
+    const { t } = useContext(LanguageContext);
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <TopTab.Navigator
@@ -23,12 +29,12 @@ export default function HostDashboardScreen() {
                 <TopTab.Screen 
                     name="FacilitiesList" 
                     component={MyFacilitiesScreen} 
-                    options={{ tabBarLabel: 'My Facilities' }} 
+                    options={{ tabBarLabel: t('my_facilities') || 'My Facilities' }} 
                 />
                 <TopTab.Screen 
                     name="HostRequests" 
                     component={HostBookingsScreen} 
-                    options={{ tabBarLabel: 'Requests' }} 
+                    options={{ tabBarLabel: t('requests') || 'Requests' }} 
                 />
             </TopTab.Navigator>
         </SafeAreaView>

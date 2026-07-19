@@ -1,14 +1,18 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ActivityIndicator, Alert, ScrollView } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ActivityIndicator, Alert, ScrollView, RefreshControl } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
+import NetInfo from '@react-native-community/netinfo';
 import { AuthContext } from '../utils/AuthContext';
+import { LanguageContext } from '../utils/LanguageContext';
 
 export default function AccountScreen() {
     const { signOut } = useContext(AuthContext);
+    const { t, language, formatNumber } = useContext(LanguageContext);
 
     const [user, setUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [editing, setEditing] = useState(null);
 
@@ -17,16 +21,30 @@ export default function AccountScreen() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    const BACKEND_URL = 'https://freeway-chest-calzone.ngrok-free.dev';
-
     useEffect(() => {
         fetchUser();
+
+        // Auto-Recovery: Listen for the internet to come back and try fetching again
+        const unsubscribe = NetInfo.addEventListener(state => {
+            if (state.isConnected) {
+                fetchUser();
+            }
+        });
+
+        return () => unsubscribe();
     }, []);
 
     const fetchUser = async () => {
+        const networkState = await NetInfo.fetch();
+        if (!networkState.isConnected) {
+            setLoading(false);
+            setRefreshing(false);
+            return;
+        }
+
         try {
-            const token = await AsyncStorage.getItem('token');
-            const response = await fetch(`${BACKEND_URL}/users/me`, {
+            const token = await SecureStore.getItemAsync('token');
+            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/me`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'ngrok-skip-browser-warning': 'true'
@@ -48,17 +66,23 @@ export default function AccountScreen() {
             console.error('Error fetching user:', error);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchUser();
     };
 
     const handleSave = async () => {
         if (editing === 'password') {
             if (password !== confirmPassword) {
-                Alert.alert('Error', 'Passwords do not match.');
+                Alert.alert(t('error') || 'Error', t('passwords_not_match') || 'Passwords do not match.');
                 return;
             }
             if (password.length < 6) {
-                Alert.alert('Error', 'Password must be at least 6 characters.');
+                Alert.alert(t('error') || 'Error', t('password_length') || 'Password must be at least 6 characters.');
                 return;
             }
         }
@@ -66,14 +90,21 @@ export default function AccountScreen() {
         setIsSaving(true);
 
         try {
-            const token = await AsyncStorage.getItem('token');
+            const networkState = await NetInfo.fetch();
+            if (!networkState.isConnected) {
+                Alert.alert(t('error') || 'Error', t('no_internet') || 'No Internet Connection');
+                setIsSaving(false);
+                return;
+            }
+
+            const token = await SecureStore.getItemAsync('token');
 
             const body = {};
             if (editing === 'username') body.username = username;
             if (editing === 'phone') body.phone_number = phone;
             if (editing === 'password') body.password = password;
 
-            const response = await fetch(`${BACKEND_URL}/users/me`, {
+            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/me`, {
                 method: 'PUT',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -95,31 +126,78 @@ export default function AccountScreen() {
                 setEditing(null);
                 setPassword('');
                 setConfirmPassword('');
-                Alert.alert('Success', 'Your details have been updated.');
+                Alert.alert(t('success') || 'Success', t('details_updated') || 'Your details have been updated.');
             } else {
-                Alert.alert('Error', data.error || 'Something went wrong.');
+                Alert.alert(t('error') || 'Error', data.error || 'Something went wrong.');
             }
         } catch (error) {
             console.error('Update error:', error);
-            Alert.alert('Error', 'Network error. Please try again.');
+            Alert.alert(t('error') || 'Error', t('network_error') || 'Network error. Please try again.');
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleLogout = () => {
-        Alert.alert('Log Out', 'Are you sure you want to log out?', [
-            { text: 'Cancel', style: 'cancel' },
-            { text: 'Log Out', style: 'destructive', onPress: () => signOut() }
+        Alert.alert(t('log_out') || 'Log Out', t('logout_confirm') || 'Are you sure you want to log out?', [
+            { text: t('cancel') || 'Cancel', style: 'cancel' },
+            { text: t('log_out') || 'Log Out', style: 'destructive', onPress: () => signOut() }
         ]);
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            t('delete_account') || 'Delete Account', 
+            t('delete_account_confirm') || 'Are you sure you want to permanently delete your account? This action cannot be undone.', 
+            [
+                { text: t('cancel') || 'Cancel', style: 'cancel' },
+                { 
+                    text: t('delete') || 'Delete', 
+                    style: 'destructive', 
+                    onPress: async () => {
+                        try {
+                            const networkState = await NetInfo.fetch();
+                            if (!networkState.isConnected) {
+                                Alert.alert(t('error') || 'Error', t('no_internet') || 'No Internet Connection');
+                                return;
+                            }
+
+                            const token = await SecureStore.getItemAsync('token');
+                            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/me`, {
+                                method: 'DELETE',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'ngrok-skip-browser-warning': 'true'
+                                }
+                            });
+
+                            if (response.ok) {
+                                Alert.alert(t('success') || 'Success', t('account_deleted_success') || 'Your account has been deleted.');
+                                await signOut();
+                            } else {
+                                const data = await response.json();
+                                Alert.alert(t('error') || 'Error', data.error || 'Failed to delete account.');
+                            }
+                        } catch (error) {
+                            Alert.alert(t('error') || 'Error', t('network_error') || 'Network error.');
+                        }
+                    }
+                }
+            ]
+        );
     };
 
     if (loading) return <ActivityIndicator size="large" color="#E8751A" style={{ flex: 1, backgroundColor: '#F9F6F0' }} />;
 
     return (
         <SafeAreaView style={styles.safeArea}>
-            <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-                <Text style={styles.headerTitle}>Profile</Text>
+            <ScrollView 
+                contentContainerStyle={styles.container} 
+                keyboardShouldPersistTaps="handled" 
+                showsVerticalScrollIndicator={false}
+                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
+            >
+                <Text style={styles.headerTitle}>{t('profile') || 'Profile'}</Text>
 
                 <View style={styles.avatarContainer}>
                     <View style={styles.avatarCircle}>
@@ -127,23 +205,34 @@ export default function AccountScreen() {
                             {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
                         </Text>
                     </View>
-                    <Text style={styles.welcomeText}>Hello, {user?.username || 'User'}</Text>
-                    <Text style={styles.roleBadge}>{user?.role?.toUpperCase() || 'PLAYER'}</Text>
+                    <Text style={styles.welcomeText}>
+                        {t('hello') || 'Hello'}, {user?.username || 'User'}
+                    </Text>
+                    <Text style={styles.roleBadge}>
+                        {user?.role ? (t(user.role.toLowerCase()) || user.role.toUpperCase()) : 'PLAYER'}
+                    </Text>
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Account Details</Text>
+                    <Text style={styles.sectionTitle}>{t('account_details') || 'Account Details'}</Text>
 
                     <View style={styles.row}>
                         <View style={styles.iconContainer}>
                             <Ionicons name="person-outline" size={20} color="#13294B" />
                         </View>
                         <View style={styles.rowLeft}>
-                            <Text style={styles.rowLabel}>Username</Text>
+                            <Text style={styles.rowLabel}>{t('username') || 'Username'}</Text>
                             {editing === 'username' ? (
-                                <TextInput style={styles.input} value={username} onChangeText={setUsername} autoCapitalize="none" autoFocus editable={!isSaving} />
+                                <TextInput 
+                                    style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]} 
+                                    value={username} 
+                                    onChangeText={setUsername} 
+                                    autoCapitalize="none" 
+                                    autoFocus 
+                                    editable={!isSaving} 
+                                />
                             ) : (
-                                <Text style={styles.rowValue}>{user?.username}</Text>
+                                <Text style={styles.rowValue}>{user?.username || '--'}</Text>
                             )}
                         </View>
                         {editing === 'username' ? (
@@ -169,11 +258,18 @@ export default function AccountScreen() {
                             <Ionicons name="call-outline" size={20} color="#13294B" />
                         </View>
                         <View style={styles.rowLeft}>
-                            <Text style={styles.rowLabel}>Phone Number</Text>
+                            <Text style={styles.rowLabel}>{t('phone_number') || 'Phone Number'}</Text>
                             {editing === 'phone' ? (
-                                <TextInput style={styles.input} value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoFocus editable={!isSaving} />
+                                <TextInput 
+                                    style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]} 
+                                    value={phone} 
+                                    onChangeText={setPhone} 
+                                    keyboardType="phone-pad" 
+                                    autoFocus 
+                                    editable={!isSaving} 
+                                />
                             ) : (
-                                <Text style={styles.rowValue}>{user?.phone_number}</Text>
+                                <Text style={styles.rowValue}>{user?.phone_number ? formatNumber(user.phone_number) : '--'}</Text>
                             )}
                         </View>
                         {editing === 'phone' ? (
@@ -199,11 +295,26 @@ export default function AccountScreen() {
                             <Ionicons name="lock-closed-outline" size={20} color="#13294B" />
                         </View>
                         <View style={styles.rowLeft}>
-                            <Text style={styles.rowLabel}>Password</Text>
+                            <Text style={styles.rowLabel}>{t('password') || 'Password'}</Text>
                             {editing === 'password' ? (
                                 <View style={{ gap: 10, marginTop: 5 }}>
-                                    <TextInput style={styles.input} value={password} onChangeText={setPassword} placeholder="New password" secureTextEntry autoFocus editable={!isSaving} />
-                                    <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} placeholder="Confirm password" secureTextEntry editable={!isSaving} />
+                                    <TextInput 
+                                        style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]} 
+                                        value={password} 
+                                        onChangeText={setPassword} 
+                                        placeholder={t('new_password') || "New password"} 
+                                        secureTextEntry 
+                                        autoFocus 
+                                        editable={!isSaving} 
+                                    />
+                                    <TextInput 
+                                        style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]} 
+                                        value={confirmPassword} 
+                                        onChangeText={setConfirmPassword} 
+                                        placeholder={t('confirm_password') || "Confirm password"} 
+                                        secureTextEntry 
+                                        editable={!isSaving} 
+                                    />
                                 </View>
                             ) : (
                                 <Text style={styles.rowValue}>••••••••</Text>
@@ -227,10 +338,17 @@ export default function AccountScreen() {
                 </View>
 
                 <View style={styles.section}>
-                    <Text style={styles.sectionTitle}>Settings</Text>
+                    <Text style={styles.sectionTitle}>{t('settings') || 'Settings'}</Text>
+                    
                     <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                        <Ionicons name="log-out-outline" size={20} color="#D32F2F" style={{ marginRight: 8 }} />
-                        <Text style={styles.logoutButtonText}>Log Out</Text>
+                        <Ionicons name="log-out-outline" size={20} color="#D32F2F" style={{ marginEnd: 8 }} />
+                        <Text style={styles.logoutButtonText}>{t('log_out') || 'Log Out'}</Text>
+                    </TouchableOpacity>
+
+                    {/* Change the icon color from #888 to #FFFFFF */}
+                    <TouchableOpacity style={styles.deleteAccountButton} onPress={handleDeleteAccount}>
+                        <Ionicons name="trash-outline" size={20} color="#FFFFFF" style={{ marginEnd: 8 }} />
+                        <Text style={styles.deleteAccountText}>{t('delete_account') || 'Delete Account'}</Text>
                     </TouchableOpacity>
                 </View>
             </ScrollView>
@@ -241,7 +359,7 @@ export default function AccountScreen() {
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F9F6F0' },
     container: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 40 },
-    headerTitle: { fontSize: 28, fontWeight: '800', color: '#13294B', marginBottom: 20 },
+    headerTitle: { fontSize: 28, fontWeight: '800', color: '#13294B', marginBottom: 20 }, 
     avatarContainer: { alignItems: 'center', marginBottom: 30 },
     avatarCircle: {
         width: 80, height: 80, borderRadius: 40, backgroundColor: '#E8751A',
@@ -252,36 +370,32 @@ const styles = StyleSheet.create({
     welcomeText: { fontSize: 20, fontWeight: '800', color: '#13294B', marginBottom: 6 },
     roleBadge: {
         backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4,
-        borderRadius: 6,
-        overflow: 'hidden', color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 1
+        borderRadius: 6, overflow: 'hidden', color: '#FFFFFF', fontSize: 10, fontWeight: '800', letterSpacing: 1
     },
     section: {
-        backgroundColor: '#FFFFFF',
-        borderRadius: 12,
-        borderWidth: 1, borderColor: '#D4D0C8',
+        backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8',
         padding: 20, marginBottom: 20,
         shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2
     },
-    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#A0A0A0', marginBottom: 20, textTransform: 'uppercase', letterSpacing: 1.2 },
+    sectionTitle: { fontSize: 12, fontWeight: '800', color: '#A0A0A0', marginBottom: 20, textTransform: 'uppercase', letterSpacing: 1.2 }, 
     row: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 5 },
     iconContainer: {
         width: 40, height: 40, borderRadius: 8, backgroundColor: '#F0F4F8',
-        justifyContent: 'center', alignItems: 'center', marginRight: 15, marginTop: 2,
+        justifyContent: 'center', alignItems: 'center', marginEnd: 15, marginTop: 2,
         borderWidth: 1, borderColor: '#EAE6DF'
     },
     rowLeft: { flex: 1, justifyContent: 'center', paddingTop: 2 },
-    rowLabel: { fontSize: 12, color: '#888888', fontWeight: '700', marginBottom: 6 },
-    rowValue: { fontSize: 15, color: '#13294B', fontWeight: '700' },
+    rowLabel: { fontSize: 12, color: '#888888', fontWeight: '700', marginBottom: 6 }, 
+    rowValue: { fontSize: 15, color: '#13294B', fontWeight: '700' }, 
     input: {
-        backgroundColor: '#F9F6F0', borderRadius: 8,
-        borderWidth: 1, borderColor: '#D4D0C8',
+        backgroundColor: '#F9F6F0', borderRadius: 8, borderWidth: 1, borderColor: '#D4D0C8',
         paddingHorizontal: 15, paddingVertical: 10, fontSize: 15, color: '#13294B', fontWeight: '500'
     },
     editIconBtn: {
         padding: 8, backgroundColor: '#FFF3E8', borderRadius: 8, marginTop: 4,
         borderWidth: 1, borderColor: 'rgba(232, 117, 26, 0.1)'
     },
-    editActions: { flexDirection: 'row', gap: 8, marginTop: 23, paddingLeft: 10 },
+    editActions: { flexDirection: 'row', gap: 8, marginTop: 23, paddingStart: 10 },
     saveButton: {
         backgroundColor: '#E8751A', width: 40, height: 40, borderRadius: 8,
         justifyContent: 'center', alignItems: 'center',
@@ -291,11 +405,21 @@ const styles = StyleSheet.create({
         backgroundColor: '#F5F5F5', width: 40, height: 40, borderRadius: 8,
         justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#D4D0C8'
     },
-    divider: { height: 1, backgroundColor: '#EAE6DF', marginVertical: 15, marginLeft: 55 },
+    divider: { height: 1, backgroundColor: '#EAE6DF', marginVertical: 15, marginStart: 55 },
     logoutButton: {
         flexDirection: 'row', backgroundColor: '#FFEBEE', padding: 14,
         borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 10,
         borderWidth: 1, borderColor: 'rgba(211, 47, 47, 0.2)'
     },
     logoutButtonText: { color: '#D32F2F', fontSize: 15, fontWeight: '800' },
+    deleteAccountButton: {
+        flexDirection: 'row', padding: 14, borderRadius: 10, alignItems: 'center', 
+        justifyContent: 'center', marginTop: 10, 
+        backgroundColor: '#424242' // 👈 This makes it a solid dark grey
+    },
+    deleteAccountText: { 
+        color: '#FFFFFF', // 👈 This makes the text white
+        fontSize: 15, 
+        fontWeight: '700' 
+    },
 });

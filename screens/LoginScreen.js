@@ -4,13 +4,16 @@ import { Image } from 'expo-image';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { registerForPushNotifications, savePushTokenToBackend } from '../utils/notifications';
 import { AuthContext } from '../utils/AuthContext';
+// 🌐 Import the Language Context
+import { LanguageContext } from '../utils/LanguageContext';
 
 const LoginScreen = () => {
     const { signIn } = useContext(AuthContext);
+    // 🌐 Use the global language context
+    const { language, changeLanguage, t } = useContext(LanguageContext);
 
     const [isLogin, setIsLogin] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [language, setLanguage] = useState('en');
     const [role, setRole] = useState('player');
 
     const [identifier, setIdentifier] = useState('');
@@ -23,10 +26,10 @@ const LoginScreen = () => {
     const fadeAnim = useSharedValue(1);
     const animatedStyle = useAnimatedStyle(() => ({ opacity: fadeAnim.value }));
 
-    const triggerFade = (stateUpdater) => {
+    const triggerFade = (action) => {
         fadeAnim.value = withTiming(0, { duration: 150 });
         setTimeout(() => {
-            stateUpdater();
+            action();
             fadeAnim.value = withTiming(1, { duration: 300 });
         }, 150);
     };
@@ -36,7 +39,7 @@ const LoginScreen = () => {
         setErrorKey('');
         setIsSubmitting(true);
 
-        const backendUrl = 'https://freeway-chest-calzone.ngrok-free.dev';
+        const backendUrl = process.env.EXPO_PUBLIC_API_URL;
 
         try {
             const endpoint = isLogin ? '/auth/login' : '/auth/register';
@@ -79,40 +82,21 @@ const LoginScreen = () => {
         }
     };
 
-    const t = {
+    // 🌐 Local dictionary specifically for Login (The rest of the app uses LanguageContext.js)
+    const localT = {
         en: {
-            signUp: 'Sign Up',
-            logIn: 'Log In',
-            usernamePlaceholder: 'Username or Phone Number',
-            usernamePlaceholder2: 'Username',
-            phonePlaceholder: 'Phone Number',
-            emailPlaceholder: 'Email (Optional)',
-            passwordPlaceholder: 'Password',
-            player: 'Player',
-            host: 'Host',
-            english: 'English',
-            arabic: 'Arabic',
-            invalidCredentials: 'Invalid credentials. Please try again.',
-            signupFailed: 'Failed to create account. Please check your inputs.',
-            networkError: 'Network Error. Please check your connection.',
-            userExists: 'Username or phone number is already taken.',
+            signUp: 'Sign Up', logIn: 'Log In', usernamePlaceholder: 'Username or Phone Number',
+            usernamePlaceholder2: 'Username', phonePlaceholder: 'Phone Number', emailPlaceholder: 'Email (Optional)',
+            passwordPlaceholder: 'Password', player: 'Player', host: 'Host', english: 'English', arabic: 'Arabic',
+            invalidCredentials: 'Invalid credentials. Please try again.', signupFailed: 'Failed to create account. Please check your inputs.',
+            networkError: 'Network Error. Please check your connection.', userExists: 'Username or phone number is already taken.',
         },
         ar: {
-            signUp: 'تسجيل',
-            logIn: 'دخول',
-            usernamePlaceholder: 'اسم المستخدم أو رقم الهاتف',
-            usernamePlaceholder2: 'اسم المستخدم',
-            phonePlaceholder: 'رقم الهاتف',
-            emailPlaceholder: 'البريد الإلكتروني (اختياري)',
-            passwordPlaceholder: 'كلمة المرور',
-            player: 'لاعب',
-            host: 'منظم',
-            english: 'English',
-            arabic: 'العربية',
-            invalidCredentials: 'بيانات الدخول غير صحيحة. يرجى المحاولة مرة أخرى.',
-            signupFailed: 'فشل في إنشاء الحساب. يرجى التحقق من البيانات.',
-            networkError: 'خطأ في الشبكة. يرجى التحقق من اتصالك.',
-            userExists: 'اسم المستخدم أو رقم الهاتف مسجل بالفعل.',
+            signUp: 'تسجيل', logIn: 'دخول', usernamePlaceholder: 'اسم المستخدم أو رقم الهاتف',
+            usernamePlaceholder2: 'اسم المستخدم', phonePlaceholder: 'رقم الهاتف', emailPlaceholder: 'البريد الإلكتروني (اختياري)',
+            passwordPlaceholder: 'كلمة المرور', player: 'لاعب', host: 'منظم', english: 'English', arabic: 'العربية',
+            invalidCredentials: 'بيانات الدخول غير صحيحة. يرجى المحاولة مرة أخرى.', signupFailed: 'فشل في إنشاء الحساب. يرجى التحقق من البيانات.',
+            networkError: 'خطأ في الشبكة. يرجى التحقق من اتصالك.', userExists: 'اسم المستخدم أو رقم الهاتف مسجل بالفعل.',
         },
     };
 
@@ -123,15 +107,15 @@ const LoginScreen = () => {
                 <View style={styles.langContainer}>
                     <TouchableOpacity
                         style={[styles.langButton, language === 'en' && styles.activeLangButton]}
-                        onPress={() => { if (language !== 'en') triggerFade(() => setLanguage('en')); }}
+                        onPress={() => { if (language !== 'en') changeLanguage('en'); }} // 🌐 Uses global change
                     >
-                        <Text style={[styles.langText, language === 'en' && styles.activeLangText]}>{t[language].english}</Text>
+                        <Text style={[styles.langText, language === 'en' && styles.activeLangText]}>{localT[language].english}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.langButton, language === 'ar' && styles.activeLangButton]}
-                        onPress={() => { if (language !== 'ar') triggerFade(() => setLanguage('ar')); }}
+                        onPress={() => { if (language !== 'ar') changeLanguage('ar'); }} // 🌐 Uses global change
                     >
-                        <Text style={[styles.langText, language === 'ar' && styles.activeLangText]}>{t[language].arabic}</Text>
+                        <Text style={[styles.langText, language === 'ar' && styles.activeLangText]}>{localT[language].arabic}</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -140,25 +124,25 @@ const LoginScreen = () => {
                         style={[styles.toggleButton, !isLogin && styles.activeToggle]}
                         onPress={() => { if (isLogin) triggerFade(() => { setIsLogin(false); setErrorKey(''); }); }}
                     >
-                        <Text style={[styles.toggleText, !isLogin && styles.activeToggleText]}>{t[language].signUp}</Text>
+                        <Text style={[styles.toggleText, !isLogin && styles.activeToggleText]}>{localT[language].signUp}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={[styles.toggleButton, isLogin && styles.activeToggle]}
                         onPress={() => { if (!isLogin) triggerFade(() => { setIsLogin(true); setErrorKey(''); }); }}
                     >
-                        <Text style={[styles.toggleText, isLogin && styles.activeToggleText]}>{t[language].logIn}</Text>
+                        <Text style={[styles.toggleText, isLogin && styles.activeToggleText]}>{localT[language].logIn}</Text>
                     </TouchableOpacity>
                 </View>
 
                 <Animated.View style={[styles.formContainer, animatedStyle]}>
-                    <Text style={styles.headerTitle}>{isLogin ? t[language].logIn : t[language].signUp}</Text>
+                    <Text style={styles.headerTitle}>{isLogin ? localT[language].logIn : localT[language].signUp}</Text>
 
-                    {errorKey ? <Text style={styles.errorText}>{t[language][errorKey]}</Text> : null}
+                    {errorKey ? <Text style={styles.errorText}>{localT[language][errorKey]}</Text> : null}
 
                     {isLogin ? (
                         <TextInput
-                            style={styles.input}
-                            placeholder={t[language].usernamePlaceholder}
+                            style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]} // 🌐 Text align fix
+                            placeholder={localT[language].usernamePlaceholder}
                             placeholderTextColor="#A0A0A0"
                             value={identifier}
                             onChangeText={setIdentifier}
@@ -167,8 +151,8 @@ const LoginScreen = () => {
                         />
                     ) : (
                         <TextInput
-                            style={styles.input}
-                            placeholder={t[language].usernamePlaceholder2}
+                            style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]} // 🌐 Text align fix
+                            placeholder={localT[language].usernamePlaceholder2}
                             placeholderTextColor="#A0A0A0"
                             value={username}
                             onChangeText={setUsername}
@@ -180,8 +164,8 @@ const LoginScreen = () => {
                     {!isLogin && (
                         <>
                             <TextInput
-                                style={styles.input}
-                                placeholder={t[language].phonePlaceholder}
+                                style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]}
+                                placeholder={localT[language].phonePlaceholder}
                                 placeholderTextColor="#A0A0A0"
                                 value={phoneNumber}
                                 onChangeText={setPhoneNumber}
@@ -189,8 +173,8 @@ const LoginScreen = () => {
                                 editable={!isSubmitting}
                             />
                             <TextInput
-                                style={styles.input}
-                                placeholder={t[language].emailPlaceholder}
+                                style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]}
+                                placeholder={localT[language].emailPlaceholder}
                                 placeholderTextColor="#A0A0A0"
                                 value={email}
                                 onChangeText={setEmail}
@@ -202,8 +186,8 @@ const LoginScreen = () => {
                     )}
 
                     <TextInput
-                        style={styles.input}
-                        placeholder={t[language].passwordPlaceholder}
+                        style={[styles.input, { textAlign: language === 'ar' ? 'right' : 'left' }]}
+                        placeholder={localT[language].passwordPlaceholder}
                         placeholderTextColor="#A0A0A0"
                         value={password}
                         onChangeText={setPassword}
@@ -217,13 +201,13 @@ const LoginScreen = () => {
                                 style={[styles.roleButton, role === 'player' && styles.activeRole]}
                                 onPress={() => setRole('player')}
                             >
-                                <Text style={[styles.roleText, role === 'player' && styles.activeRoleText]}>{t[language].player}</Text>
+                                <Text style={[styles.roleText, role === 'player' && styles.activeRoleText]}>{localT[language].player}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.roleButton, role === 'host' && styles.activeRole]}
                                 onPress={() => setRole('host')}
                             >
-                                <Text style={[styles.roleText, role === 'host' && styles.activeRoleText]}>{t[language].host}</Text>
+                                <Text style={[styles.roleText, role === 'host' && styles.activeRoleText]}>{localT[language].host}</Text>
                             </TouchableOpacity>
                         </View>
                     )}
@@ -236,14 +220,14 @@ const LoginScreen = () => {
                         {isSubmitting ? (
                             <ActivityIndicator color="#FFF" />
                         ) : (
-                            <Text style={styles.submitButtonText}>{isLogin ? t[language].logIn : t[language].signUp}</Text>
+                            <Text style={styles.submitButtonText}>{isLogin ? localT[language].logIn : localT[language].signUp}</Text>
                         )}
                     </TouchableOpacity>
                 </Animated.View>
 
                 <View style={styles.logoContainer}>
                     <Image
-                        source={require('../assets/logo.png')}
+                        source={require('../assets/icon.png')}
                         style={styles.logoImage}
                         contentFit="contain"
                         cachePolicy="memory-disk"

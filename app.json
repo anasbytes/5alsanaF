@@ -1,29 +1,38 @@
 {
   "expo": {
-    "name": "5alsana-frontend",
-    "slug": "5alsana-frontend",
+    "name": "5alsana",
+    "slug": "5alsana",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/logo.png",
+      "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#F9F6F0"
+      "backgroundColor": "#13294B"
     },
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#13294B"
       },
       "edgeToEdgeEnabled": true
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-secure-store"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "8df0fd22-e686-4859-b77f-835600ab84b2"
+      }
+    },
+    "owner": "anasbytes"
   }
 }

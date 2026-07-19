@@ -1,13 +1,17 @@
 import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../utils/AuthContext';
+// 🌐 Import Language Context
+import { LanguageContext } from '../utils/LanguageContext';
 
-const BACKEND_URL = 'https://freeway-chest-calzone.ngrok-free.dev';
+const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
 export default function HostBookingsScreen({ navigation }) {
     const { signOut } = useContext(AuthContext);
+    // 🌐 Use Language Context
+    const { t, language, formatNumber } = useContext(LanguageContext);
 
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -15,10 +19,11 @@ export default function HostBookingsScreen({ navigation }) {
 
     const fetchHostBookings = useCallback(async () => {
         try {
-            const token = await AsyncStorage.getItem('token');
+            const token = await SecureStore.getItemAsync('token');
 
             const response = await fetch(`${BACKEND_URL}/bookings/host/me`, {
-                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+                headers: { 'Authorization': `Bearer ${token}`,
+                 'ngrok-skip-browser-warning': 'true' }
             });
 
             if (response.status === 401 || response.status === 403) {
@@ -60,7 +65,7 @@ export default function HostBookingsScreen({ navigation }) {
     const updateBookingStatus = async (bookingId, newStatus) => {
         setUpdatingId(bookingId);
         try {
-            const token = await AsyncStorage.getItem('token');
+            const token = await SecureStore.getItemAsync('token');
             const response = await fetch(`${BACKEND_URL}/bookings/${bookingId}/status`, {
                 method: 'PUT',
                 headers: {
@@ -80,25 +85,28 @@ export default function HostBookingsScreen({ navigation }) {
                 fetchHostBookings();
             } else {
                 const data = await response.json();
-                Alert.alert('Error', data.error || 'Failed to update booking status.');
+                Alert.alert(t('error') || 'Error', data.error || t('update_failed') || 'Failed to update booking status.');
             }
         } catch (error) {
             console.error('Error updating status:', error);
-            Alert.alert('Network Error', 'Please check your connection and try again.');
+            Alert.alert(t('network_error') || 'Network Error', t('check_connection') || 'Please check your connection and try again.');
         } finally {
             setUpdatingId(null);
         }
     };
 
     const confirmAction = (booking, action) => {
-        const title = action === 'confirmed' ? 'Accept Booking' : 'Decline Booking';
-        const message = `Are you sure you want to ${action === 'confirmed' ? 'accept' : 'decline'} this booking for ${booking.facility_name}?`;
+        const isAccepting = action === 'confirmed';
+        const title = isAccepting ? (t('accept_booking') || 'Accept Booking') : (t('decline_booking') || 'Decline Booking');
+
+        const messageActionText = isAccepting ? (t('confirm_accept') || 'accept') : (t('confirm_decline') || 'decline');
+        const message = `${t('are_you_sure') || 'Are you sure you want to'} ${messageActionText} ${t('booking_for') || 'this booking for'} ${booking.facility_name}?`;
 
         Alert.alert(title, message, [
-            { text: 'Cancel', style: 'cancel' },
+            { text: t('cancel') || 'Cancel', style: 'cancel' },
             {
-                text: action === 'confirmed' ? 'Accept' : 'Decline',
-                style: action === 'confirmed' ? 'default' : 'destructive',
+                text: isAccepting ? (t('accept') || 'Accept') : (t('decline') || 'Decline'),
+                style: isAccepting ? 'default' : 'destructive',
                 onPress: () => updateBookingStatus(booking.id, action)
             }
         ]);
@@ -106,10 +114,10 @@ export default function HostBookingsScreen({ navigation }) {
 
     const getStatusStyle = (status) => {
         switch (status.toLowerCase()) {
-            case 'confirmed': return { color: '#2E8B57', bg: '#E8F5E9', icon: 'checkmark-circle', text: 'CONFIRMED' };
-            case 'cancelled': return { color: '#D32F2F', bg: '#FFEBEE', icon: 'close-circle', text: 'CANCELLED' };
-            case 'completed': return { color: '#888888', bg: '#F5F5F5', icon: 'checkmark-done-circle', text: 'COMPLETED' };
-            default: return { color: '#E8751A', bg: '#FFF3E8', icon: 'time', text: 'PENDING' };
+            case 'confirmed': return { color: '#2E8B57', bg: '#E8F5E9', icon: 'checkmark-circle', text: t('confirmed') || 'CONFIRMED' };
+            case 'cancelled': return { color: '#D32F2F', bg: '#FFEBEE', icon: 'close-circle', text: t('cancelled') || 'CANCELLED' };
+            case 'completed': return { color: '#888888', bg: '#F5F5F5', icon: 'checkmark-done-circle', text: t('completed') || 'COMPLETED' };
+            default: return { color: '#E8751A', bg: '#FFF3E8', icon: 'time', text: t('pending') || 'PENDING' };
         }
     };
 
@@ -124,8 +132,9 @@ export default function HostBookingsScreen({ navigation }) {
 
     const renderBooking = ({ item }) => {
         const statusStyle = getStatusStyle(item.status);
+        const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
         const dateObj = new Date(item.booking_date);
-        const formattedDate = dateObj.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+        const formattedDate = dateObj.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 
         const isCurrentlyUpdating = updatingId === item.id;
 
@@ -142,7 +151,7 @@ export default function HostBookingsScreen({ navigation }) {
                 <View style={styles.cardBody}>
                     <View style={styles.infoRow}>
                         <Ionicons name="person-outline" size={16} color="#888" />
-                        <Text style={styles.infoText}>Player: <Text style={styles.boldText}>{item.player_name}</Text></Text>
+                        <Text style={styles.infoText}>{t('player_label') || 'Player:'} <Text style={styles.boldText}>{item.player_name}</Text></Text>
                     </View>
                     <View style={styles.infoRow}>
                         <Ionicons name="calendar-outline" size={16} color="#888" />
@@ -150,13 +159,14 @@ export default function HostBookingsScreen({ navigation }) {
                     </View>
                     <View style={styles.infoRow}>
                         <Ionicons name="time-outline" size={16} color="#888" />
-                        <Text style={styles.infoText}>{formatTo12Hour(item.start_time)} - {formatTo12Hour(item.end_time)}</Text>
+                        {/* 🌐 Forced LTR so time formatting doesn't break in Arabic */}
+                        <Text style={[styles.infoText, { direction: 'ltr' }]}>{formatTo12Hour(item.start_time)} - {formatTo12Hour(item.end_time)}</Text>
                     </View>
                     <View style={styles.infoRow}>
                         <Ionicons name="cash-outline" size={16} color="#888" />
                         <Text style={styles.infoText}>
-                            Total: <Text style={styles.priceText}>
-                                {parseFloat(item.total_price).toFixed(2).replace(/\.00$/, '')} EGP
+                            {t('total_label') || 'Total:'} <Text style={styles.priceText}>
+                                {parseFloat(item.total_price).toFixed(2).replace(/\.00$/, '')} {t('egp') || 'EGP'}
                             </Text>
                         </Text>
                     </View>
@@ -171,7 +181,7 @@ export default function HostBookingsScreen({ navigation }) {
                                 onPress={() => confirmAction(item, 'cancelled')}
                                 disabled={isCurrentlyUpdating}
                             >
-                                <Text style={styles.declineBtnText}>Decline</Text>
+                                <Text style={styles.declineBtnText}>{t('decline') || 'Decline'}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity
                                 style={[styles.acceptBtn, isCurrentlyUpdating && { opacity: 0.5 }]}
@@ -179,9 +189,9 @@ export default function HostBookingsScreen({ navigation }) {
                                 disabled={isCurrentlyUpdating}
                             >
                                 {isCurrentlyUpdating ? (
-                                    <ActivityIndicator size="small" color="#FFF" />
+                                    <ActivityIndicator size="small" color="#13294B" />
                                 ) : (
-                                    <Text style={styles.acceptBtnText}>Accept Booking</Text>
+                                    <Text style={styles.acceptBtnText}>{t('accept_booking') || 'Accept Booking'}</Text>
                                 )}
                             </TouchableOpacity>
                         </View>
@@ -205,8 +215,8 @@ export default function HostBookingsScreen({ navigation }) {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="calendar-clear-outline" size={60} color="#D0D0D0" />
-                            <Text style={styles.emptyText}>No incoming requests.</Text>
-                            <Text style={styles.emptySubText}>Bookings will appear here.</Text>
+                            <Text style={styles.emptyText}>{t('no_requests') || 'No incoming requests.'}</Text>
+                            <Text style={styles.emptySubText}>{t('requests_appear_here') || 'Bookings will appear here.'}</Text>
                         </View>
                     }
                 />
@@ -215,12 +225,13 @@ export default function HostBookingsScreen({ navigation }) {
     );
 }
 
+// 🌐 Removed ALL hardcoded textAlign: 'left' from the StyleSheet!
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: '#F9F6F0' },
     listContainer: { paddingHorizontal: 20, paddingTop: 15, paddingBottom: 30 },
     card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 18, marginBottom: 15, borderWidth: 1, borderColor: '#D4D0C8', shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2 },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-    facilityName: { fontSize: 18, fontWeight: '800', color: '#13294B', flex: 1, marginRight: 10, letterSpacing: 0.2 },
+    facilityName: { fontSize: 18, fontWeight: '800', color: '#13294B', flex: 1, marginEnd: 10, letterSpacing: 0.2 },
     statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, gap: 4 },
     statusText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
     cardBody: { gap: 8 },
@@ -232,9 +243,9 @@ const styles = StyleSheet.create({
     actionsContainer: { flexDirection: 'row', gap: 10 },
     declineBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#D32F2F', alignItems: 'center' },
     declineBtnText: { color: '#D32F2F', fontWeight: '800', fontSize: 14 },
-    acceptBtn: { flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E8751A', alignItems: 'center', borderWidth: 1, borderColor: '#E8751A' },
-    acceptBtnText: { color: '#FFFFFF', fontWeight: '900', fontSize: 14 },
+    acceptBtn: { flex: 2, paddingVertical: 12, borderRadius: 10, backgroundColor: '#E3F2FD', alignItems: 'center', borderWidth: 1, borderColor: '#000000' },
+    acceptBtnText: { color: '#13294B', fontWeight: '900', fontSize: 14 },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 80 },
-    emptyText: { fontSize: 18, fontWeight: '800', color: '#13294B', marginTop: 15 },
-    emptySubText: { fontSize: 14, color: '#888888', marginTop: 5, fontWeight: '600' },
+    emptyText: { fontSize: 18, fontWeight: '800', color: '#13294B', marginTop: 15, textAlign: 'center' },
+    emptySubText: { fontSize: 14, color: '#888888', marginTop: 5, fontWeight: '600', textAlign: 'center' },
 });

@@ -1,22 +1,24 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../utils/AuthContext';
+import { useFocusEffect } from '@react-navigation/native';
+import { LanguageContext } from '../utils/LanguageContext';
 
 export default function BookingsScreen({ navigation }) {
     const { signOut } = useContext(AuthContext);
+    const { t, language, formatNumber } = useContext(LanguageContext);
 
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    useEffect(() => {
-        const unsubscribe = navigation.addListener('focus', () => {
+    useFocusEffect(
+        useCallback(() => {
             fetchBookings();
-        });
-        return unsubscribe;
-    }, [navigation]);
+        }, [])
+    );
 
     const formatTo12Hour = (timeStr) => {
         if (!timeStr) return '';
@@ -29,9 +31,9 @@ export default function BookingsScreen({ navigation }) {
 
     const fetchBookings = async () => {
         try {
-            const token = await AsyncStorage.getItem('token');
+            const token = await SecureStore.getItemAsync('token');
 
-            const response = await fetch(`https://freeway-chest-calzone.ngrok-free.dev/bookings/player/me`, {
+            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/player/me`, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -48,8 +50,8 @@ export default function BookingsScreen({ navigation }) {
 
             if (response.ok) {
                 const sorted = data.sort((a, b) => {
-                    const statusA = getDisplayStatus(a).text;
-                    const statusB = getDisplayStatus(b).text;
+                    const statusA = getDisplayStatus(a).rawText;
+                    const statusB = getDisplayStatus(b).rawText;
 
                     const priority = { 'ACTIVE': 0, 'PENDING': 1, 'CONFIRMED': 2, 'COMPLETED': 3, 'CANCELLED': 4 };
                     const pA = priority[statusA] ?? 5;
@@ -79,11 +81,11 @@ export default function BookingsScreen({ navigation }) {
         const statusStr = item.status.toLowerCase();
 
         if (statusStr === 'cancelled') {
-            return { text: 'CANCELLED', style: styles.statusCancelled, icon: 'close-circle' };
+            return { rawText: 'CANCELLED', text: t('cancelled') || 'CANCELLED', style: styles.statusCancelled, icon: 'close-circle' };
         }
 
         if (statusStr === 'pending') {
-            return { text: 'PENDING', style: styles.statusPending, icon: 'time' };
+            return { rawText: 'PENDING', text: t('pending') || 'PENDING', style: styles.statusPending, icon: 'time' };
         }
 
         const now = new Date();
@@ -100,11 +102,11 @@ export default function BookingsScreen({ navigation }) {
         }
 
         if (now >= startObj && now <= endObj) {
-            return { text: 'ACTIVE', style: styles.statusActive, icon: 'play-circle' };
+            return { rawText: 'ACTIVE', text: t('active') || 'ACTIVE', style: styles.statusActive, icon: 'play-circle' };
         } else if (now > endObj) {
-            return { text: 'COMPLETED', style: styles.statusCompleted, icon: 'checkmark-done-circle' };
+            return { rawText: 'COMPLETED', text: t('completed') || 'COMPLETED', style: styles.statusCompleted, icon: 'checkmark-done-circle' };
         } else {
-            return { text: 'CONFIRMED', style: styles.statusConfirmed, icon: 'checkmark-circle' };
+            return { rawText: 'CONFIRMED', text: t('confirmed') || 'CONFIRMED', style: styles.statusConfirmed, icon: 'checkmark-circle' };
         }
     };
 
@@ -123,8 +125,7 @@ export default function BookingsScreen({ navigation }) {
             initial: false,
             params: {
                 facility: mappedFacility,
-                booking: item,
-                onGoBack: () => fetchBookings()
+                booking: item
             }
         });
     };
@@ -132,7 +133,9 @@ export default function BookingsScreen({ navigation }) {
     const renderBooking = ({ item }) => {
         const start = formatTo12Hour(item.start_time);
         const end = formatTo12Hour(item.end_time);
-        const date = new Date(item.booking_date).toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' });
+
+        const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+        const date = new Date(item.booking_date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 
         const statusConfig = getDisplayStatus(item);
 
@@ -152,7 +155,7 @@ export default function BookingsScreen({ navigation }) {
 
                 <View style={styles.cardBody}>
                     <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{item.facility_type.toUpperCase()}</Text>
+                        <Text style={styles.badgeText}>{t(item.facility_type.toLowerCase()) || item.facility_type.toUpperCase()}</Text>
                     </View>
                     <View style={styles.locationContainer}>
                         <Ionicons name="location" size={14} color="#888" />
@@ -164,17 +167,17 @@ export default function BookingsScreen({ navigation }) {
 
                 <View style={styles.timeRow}>
                     <View style={styles.timeColumn}>
-                        <Text style={styles.timeLabel}>Date</Text>
+                        <Text style={styles.timeLabel}>{t('date') || 'Date'}</Text>
                         <View style={styles.timeValRow}>
                             <Ionicons name="calendar-outline" size={16} color="#13294B" />
                             <Text style={styles.timeValue}>{date}</Text>
                         </View>
                     </View>
                     <View style={styles.timeColumn}>
-                        <Text style={styles.timeLabel}>Time</Text>
+                        <Text style={styles.timeLabel}>{t('time') || 'Time'}</Text>
                         <View style={styles.timeValRow}>
                             <Ionicons name="time-outline" size={16} color="#13294B" />
-                            <Text style={styles.timeValue}>{start} - {end}</Text>
+                            <Text style={[styles.timeValue, { direction: 'ltr' }]}>{start} - {end}</Text>
                         </View>
                     </View>
                 </View>
@@ -185,8 +188,8 @@ export default function BookingsScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>My Bookings</Text>
-                <Text style={styles.headerSubText}>Track your requests and sessions</Text>
+                <Text style={styles.headerTitle}>{t('my_bookings') || 'My Bookings'}</Text>
+                <Text style={styles.headerSubText}>{t('track_bookings') || 'Track your requests and sessions'}</Text>
             </View>
 
             {loading ? (
@@ -204,7 +207,7 @@ export default function BookingsScreen({ navigation }) {
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="calendar-clear-outline" size={60} color="#D0D0D0" />
-                            <Text style={styles.emptyText}>You haven't booked anything yet.</Text>
+                            <Text style={styles.emptyText}>{t('no_bookings_yet') || "You haven't booked anything yet."}</Text>
                         </View>
                     }
                 />
@@ -213,6 +216,7 @@ export default function BookingsScreen({ navigation }) {
     );
 }
 
+// 🌐 Removed ALL hardcoded textAlign: 'left' from the StyleSheet!
 const styles = StyleSheet.create({
     safeArea: { flex: 1, backgroundColor: '#F9F6F0' },
     header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 20 },
@@ -233,7 +237,7 @@ const styles = StyleSheet.create({
         elevation: 2
     },
     cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    cardTitle: { fontSize: 18, fontWeight: '800', color: '#13294B', flex: 1, marginRight: 10, letterSpacing: 0.2 },
+    cardTitle: { fontSize: 18, fontWeight: '800', color: '#13294B', flex: 1, marginEnd: 10, letterSpacing: 0.2 },
     statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, gap: 4 },
     statusText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
     statusPending: { backgroundColor: '#FFF3E8', color: '#E8751A' },
@@ -243,15 +247,15 @@ const styles = StyleSheet.create({
     statusCancelled: { backgroundColor: '#FFEBEE', color: '#D32F2F' },
     cardBody: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
     badge: { backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6 },
-    badgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
-    locationContainer: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginLeft: 10 },
-    cardLocation: { fontSize: 13, color: '#555555', marginLeft: 4, flexShrink: 1, fontWeight: '600' },
+    badgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textAlign: 'center' },
+    locationContainer: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginStart: 10 },
+    cardLocation: { fontSize: 13, color: '#555555', marginStart: 4, flexShrink: 1, fontWeight: '600' },
     divider: { height: 1, backgroundColor: '#EAE6DF', marginVertical: 12 },
     timeRow: { flexDirection: 'row', justifyContent: 'space-between' },
-    timeColumn: { flex: 1 },
+    timeColumn: { flex: 1, alignItems: 'flex-start' },
     timeLabel: { fontSize: 11, color: '#888888', fontWeight: '800', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.5 },
     timeValRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
     timeValue: { fontSize: 14, fontWeight: '800', color: '#13294B' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 80 },
-    emptyText: { fontSize: 16, fontWeight: '800', color: '#888888', marginTop: 15 },
+    emptyText: { fontSize: 16, fontWeight: '800', color: '#888888', marginTop: 15, textAlign: 'center' },
 });
