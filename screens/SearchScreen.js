@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useContext, useRef } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, RefreshControl, Animated } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -18,6 +18,38 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 };
+
+// --- CUSTOM SKELETON LOADER ---
+const SkeletonCard = () => {
+    const fadeAnim = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                Animated.timing(fadeAnim, { toValue: 0.3, duration: 800, useNativeDriver: true })
+            ])
+        ).start();
+    }, [fadeAnim]);
+
+    return (
+        <View style={styles.card}>
+            <View style={styles.cardHeader}>
+                <View style={styles.titleContainer}>
+                    <Animated.View style={[styles.skeletonBlock, { width: 30, height: 30, borderRadius: 8, opacity: fadeAnim }]} />
+                    <Animated.View style={[styles.skeletonBlock, { width: 140, height: 16, borderRadius: 4, marginLeft: 12, opacity: fadeAnim }]} />
+                </View>
+                <Animated.View style={[styles.skeletonBlock, { width: 60, height: 16, borderRadius: 4, opacity: fadeAnim }]} />
+            </View>
+            <View style={styles.cardBody}>
+                <Animated.View style={[styles.skeletonBlock, { width: 70, height: 20, borderRadius: 6, opacity: fadeAnim }]} />
+                <Animated.View style={[styles.skeletonBlock, { width: 60, height: 20, borderRadius: 6, marginLeft: 8, opacity: fadeAnim }]} />
+                <Animated.View style={[styles.skeletonBlock, { width: 100, height: 14, borderRadius: 4, marginLeft: 10, marginTop: 4, opacity: fadeAnim }]} />
+            </View>
+        </View>
+    );
+};
+// ------------------------------
 
 export default function SearchScreen({ navigation }) {
     const { signOut } = useContext(AuthContext);
@@ -77,6 +109,9 @@ export default function SearchScreen({ navigation }) {
             if (status === 'granted') {
                 let location = await Location.getCurrentPositionAsync({});
                 setUserCoords({ latitude: location.coords.latitude, longitude: location.coords.longitude });
+                
+                // 👇 ADD THIS LINE: Automatically switch to "Closest" sort if we get the location!
+                setSortBy('closest');
             }
         } catch (error) {
             console.log("Could not get location for search screen", error);
@@ -284,7 +319,12 @@ export default function SearchScreen({ navigation }) {
             </View>
 
             {loading ? (
-                <ActivityIndicator size="large" color="#E8751A" style={{ marginTop: 50 }} />
+                // Render 6 skeleton cards while loading
+                <View style={styles.listContainer}>
+                    {[...Array(6)].map((_, index) => (
+                        <SkeletonCard key={index} />
+                    ))}
+                </View>
             ) : (
                 <FlatList
                     data={filteredFacilities}
@@ -359,4 +399,5 @@ const styles = StyleSheet.create({
     cardLocation: { fontSize: 13, color: '#555555', marginStart: 4, flexShrink: 1, fontWeight: '600' },
     emptyContainer: { alignItems: 'center', marginTop: 60 },
     emptyText: { textAlign: 'center', marginTop: 15, fontSize: 15, color: '#888888', fontWeight: '600' },
+    skeletonBlock: { backgroundColor: '#D4D0C8' } // Added style for the skeleton animation
 });

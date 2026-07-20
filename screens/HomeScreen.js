@@ -1,11 +1,12 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, Image, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, Modal, Image, RefreshControl, Animated } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { AuthContext } from '../utils/AuthContext';
 import { LanguageContext } from '../utils/LanguageContext';
 import NetInfo from '@react-native-community/netinfo';
+import { useFocusEffect } from '@react-navigation/native';
 
 const CATEGORIES = [
     { value: 'All', labelKey: 'type_all' },
@@ -28,12 +29,45 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
     return R * c;
 };
 
+// --- CUSTOM SKELETON LOADER FOR HOME SCREEN ---
+const SkeletonCard = () => {
+    const fadeAnim = useRef(new Animated.Value(0.3)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(fadeAnim, { toValue: 0.8, duration: 800, useNativeDriver: true }),
+                Animated.timing(fadeAnim, { toValue: 0.3, duration: 800, useNativeDriver: true })
+            ])
+        ).start();
+    }, [fadeAnim]);
+
+    return (
+        <View style={styles.card}>
+            <Animated.View style={[styles.skeletonBlock, { height: 160, width: '100%', opacity: fadeAnim }]} />
+            <View style={styles.cardContent}>
+                <View style={styles.cardHeader}>
+                    <Animated.View style={[styles.skeletonBlock, { width: '60%', height: 20, borderRadius: 4, opacity: fadeAnim }]} />
+                    <Animated.View style={[styles.skeletonBlock, { width: '20%', height: 20, borderRadius: 4, opacity: fadeAnim }]} />
+                </View>
+                <View style={styles.cardBody}>
+                    <Animated.View style={[styles.skeletonBlock, { width: 70, height: 24, borderRadius: 6, opacity: fadeAnim }]} />
+                    <Animated.View style={[styles.skeletonBlock, { width: 60, height: 24, borderRadius: 6, marginLeft: 8, opacity: fadeAnim }]} />
+                    <Animated.View style={[styles.skeletonBlock, { width: 100, height: 16, borderRadius: 4, marginLeft: 10, marginTop: 4, opacity: fadeAnim }]} />
+                </View>
+            </View>
+        </View>
+    );
+};
+// ----------------------------------------------
+
 export default function HomeScreen({ navigation }) {
     const { signOut } = useContext(AuthContext) || {};
     const { t, language, formatNumber = (val) => val } = useContext(LanguageContext) || {};
     const isRTL = language === 'ar';
 
     const [facilities, setFacilities] = useState([]);
+    const [recentFacilities, setRecentFacilities] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [activeCategory, setActiveCategory] = useState('All');
@@ -49,6 +83,13 @@ export default function HomeScreen({ navigation }) {
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    // Load Recents when returning to Home Screen
+    useFocusEffect(
+        useCallback(() => {
+            loadRecentFacilities();
+        }, [])
+    );
+
     useEffect(() => {
         fetchUserLocation();
     }, []);
@@ -57,9 +98,53 @@ export default function HomeScreen({ navigation }) {
         const controller = new AbortController();
         setPage(0);
         setHasMore(true);
+        setLoading(true); 
         fetchFacilities(0, controller.signal, activeCategory);
         return () => controller.abort();
     }, [activeCategory]);
+
+    const loadRecentFacilities = async () => {
+        try {
+            const stored = await SecureStore.getItemAsync('recent_facilities');
+            if (stored) {
+                setRecentFacilities(JSON.parse(stored));
+            }
+        } catch (e) {
+            console.log("Error loading recents:", e);
+        }
+    };
+
+    const handleFacilityPress = async (facility) => {
+        try {
+            // Fetch existing
+            const stored = await SecureStore.getItemAsync('recent_facilities');
+            let recents = stored ? JSON.parse(stored) : [];
+            
+            // Remove if already exists so we can bump it to the front
+            recents = recents.filter(f => f.id !== facility.id);
+            
+            // Minify object to avoid SecureStore 2048 byte overflow limit
+            const minifiedFacility = {
+                id: facility.id,
+                name: facility.name,
+                price_per_hour: facility.price_per_hour,
+                image_url: facility.image_url,
+                type: facility.type,
+                location: facility.location
+            };
+            
+            // Add to front & limit to 5
+            recents.unshift(minifiedFacility);
+            recents = recents.slice(0, 5); 
+            
+            await SecureStore.setItemAsync('recent_facilities', JSON.stringify(recents));
+            setRecentFacilities(recents);
+        } catch (e) {
+            console.log('Error saving recent:', e);
+        }
+
+        navigation.navigate('Home', { screen: 'FacilityDetails', params: { facility } });
+    };
 
     const fetchUserLocation = async () => {
         try {
@@ -110,7 +195,6 @@ export default function HomeScreen({ navigation }) {
     };
 
     const fetchFacilities = async (pageNumber, signal, category = activeCategory) => {
-        // EARLY EXIT: Prevent infinite loops if there is no internet connection
         const networkState = await NetInfo.fetch();
         if (!networkState.isConnected) {
             setLoading(false);
@@ -165,7 +249,7 @@ export default function HomeScreen({ navigation }) {
     };
 
     const loadMoreFacilities = () => {
-        if (!loadingMore && hasMore) {
+        if (!loadingMore && hasMore && !loading) {
             setLoadingMore(true);
             const nextPage = page + 1;
             setPage(nextPage);
@@ -190,22 +274,49 @@ export default function HomeScreen({ navigation }) {
         }).sort((a, b) => a.distance - b.distance);
     }
 
-    const getTypeIcon = (facilityType) => {
-        switch (facilityType.toLowerCase()) {
-            case 'football': return 'football';
-            case 'basketball': return 'basketball';
-            case 'padel': return 'tennisball';
-            case 'ping pong': return 'tennisball-outline';
-            case 'playstation': return 'game-controller';
-            default: return 'trophy';
-        }
-    };
+    const renderRecentFacility = ({ item }) => (
+        <TouchableOpacity
+            style={styles.recentCard}
+            activeOpacity={0.7}
+            onPress={() => handleFacilityPress(item)}
+        >
+            <Image source={item.image_url ? { uri: item.image_url } : require('../assets/no-image-placeholder.png')} style={styles.recentImage} />
+            <View style={styles.recentInfo}>
+                <Text style={styles.recentTitle} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.recentPrice}>{formatNumber(item.price_per_hour)} {t('egp') || 'EGP'}</Text>
+            </View>
+        </TouchableOpacity>
+    );
+
+    const renderListHeader = () => (
+        <View style={{ marginBottom: 5 }}>
+            {recentFacilities.length > 0 && (
+                <View style={styles.recentSection}>
+                    <Text style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>{t('recently_viewed') || 'Recently Viewed'}</Text>
+                    <FlatList
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        data={recentFacilities}
+                        keyExtractor={(item) => 'recent_' + item.id}
+                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10, paddingTop: 5 }}
+                        renderItem={renderRecentFacility}
+                    />
+                </View>
+            )}
+            {/* Show title only if not actively loading the whole category to avoid weird flashing */}
+            {!loading && (
+                 <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 15 }]}>
+                    {t('explore_facilities') || 'Explore Facilities'}
+                </Text>
+            )}
+        </View>
+    );
 
     const renderFacility = ({ item }) => (
         <TouchableOpacity
             style={styles.card}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('Home', { screen: 'FacilityDetails', params: { facility: item } })}
+            onPress={() => handleFacilityPress(item)}
         >
             <Image source={item.image_url ? { uri: item.image_url } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
 
@@ -216,7 +327,7 @@ export default function HomeScreen({ navigation }) {
                 </View>
                 <View style={styles.cardBody}>
                     <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{t(item.type.toLowerCase()) || item.type.toUpperCase()}</Text>
+                        <Text style={styles.badgeText}>{t(item.type?.toLowerCase() || 'general') || item.type?.toUpperCase()}</Text>
                     </View>
                     {item.distance !== undefined && item.distance !== Infinity && (
                         <View style={styles.distanceBadge}>
@@ -273,21 +384,24 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <FlatList
-                data={displayList}
-                keyExtractor={(item) => item.id.toString()}
-                renderItem={renderFacility}
+                data={loading ? [1, 2, 3] : displayList}
+                keyExtractor={(item, index) => loading ? `skel_${index}` : item.id.toString()}
+                renderItem={({ item, index }) => loading ? <SkeletonCard key={index} /> : renderFacility({ item })}
                 style={{ flex: 1 }}
                 contentContainerStyle={styles.listContainer}
                 showsVerticalScrollIndicator={false}
+                ListHeaderComponent={renderListHeader}
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
                 onEndReached={loadMoreFacilities}
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={renderFooter}
                 ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Ionicons name="business-outline" size={50} color="#D0D0D0" />
-                        <Text style={styles.emptyText}>{t('no_facilities')}</Text>
-                    </View>
+                    !loading && (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="business-outline" size={50} color="#D0D0D0" />
+                            <Text style={styles.emptyText}>{t('no_facilities')}</Text>
+                        </View>
+                    )
                 }
             />
 
@@ -335,6 +449,17 @@ const styles = StyleSheet.create({
     activeCategoryBadge: { backgroundColor: '#13294B', borderColor: '#13294B' },
     categoryText: { fontSize: 13, fontWeight: '700', color: '#888888', textAlign: 'center' },
     activeCategoryText: { color: '#FFFFFF' },
+    
+    // --- RECENTLY VIEWED STYLES ---
+    recentSection: { marginBottom: 15 },
+    sectionTitle: { fontSize: 18, fontWeight: '800', color: '#13294B', marginBottom: 10, letterSpacing: 0.2 },
+    recentCard: { width: 140, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8', marginEnd: 12, overflow: 'hidden', shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+    recentImage: { width: '100%', height: 90, resizeMode: 'cover', borderBottomWidth: 1, borderColor: '#EAE6DF' },
+    recentInfo: { padding: 10 },
+    recentTitle: { fontSize: 14, fontWeight: '800', color: '#13294B', marginBottom: 4 },
+    recentPrice: { fontSize: 13, fontWeight: '800', color: '#E8751A' },
+    // ------------------------------
+
     listContainer: { paddingHorizontal: 20, paddingBottom: 20 },
     card: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8', marginBottom: 16, shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2, overflow: 'hidden' },
     cardImage: { width: '100%', height: 160, resizeMode: 'cover', borderBottomWidth: 1, borderColor: '#EAE6DF' },
@@ -349,7 +474,7 @@ const styles = StyleSheet.create({
     distanceText: { fontSize: 10, fontWeight: '800', color: '#1565C0', marginStart: 3 },
     locationContainer: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginStart: 10, marginBottom: 4 },
     cardLocation: { fontSize: 13, color: '#555555', marginStart: 4, flexShrink: 1, fontWeight: '600' },
-    emptyContainer: { alignItems: 'center', marginTop: 60 },
+    emptyContainer: { alignItems: 'center', marginTop: 30 },
     emptyText: { textAlign: 'center', marginTop: 15, fontSize: 15, color: '#888888', fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
     modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
@@ -361,5 +486,6 @@ const styles = StyleSheet.create({
     searchLocationBtn: { backgroundColor: '#E8751A', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginBottom: 10 },
     searchLocationBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
     useCurrentBtn: { flexDirection: 'row', backgroundColor: '#F0F4F8', borderWidth: 1, borderColor: '#D4D0C8', borderRadius: 10, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-    useCurrentBtnText: { color: '#13294B', fontWeight: 'bold', fontSize: 14 }
+    useCurrentBtnText: { color: '#13294B', fontWeight: 'bold', fontSize: 14 },
+    skeletonBlock: { backgroundColor: '#D4D0C8' }
 });
