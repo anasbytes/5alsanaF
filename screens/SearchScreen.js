@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, RefreshControl } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -29,6 +29,7 @@ export default function SearchScreen({ navigation }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const [sortBy, setSortBy] = useState('default');
+    const [refreshing, setRefreshing] = useState(false);
 
     const [userCoords, setUserCoords] = useState(null);
 
@@ -88,6 +89,7 @@ export default function SearchScreen({ navigation }) {
         if (!networkState.isConnected) {
             setLoading(false);
             setLoadingMore(false);
+            setRefreshing(false);
             return;
         }
 
@@ -127,7 +129,15 @@ export default function SearchScreen({ navigation }) {
         } finally {
             setLoading(false);
             setLoadingMore(false);
+            setRefreshing(false);
         }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        setPage(0);
+        setHasMore(true);
+        fetchFacilities(0, undefined, activeCategory, searchQuery);
     };
 
     const loadMoreFacilities = () => {
@@ -287,6 +297,7 @@ export default function SearchScreen({ navigation }) {
                     keyboardDismissMode="on-drag"
                     onEndReached={loadMoreFacilities}
                     onEndReachedThreshold={0.5}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
                     ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#E8751A" style={{ marginVertical: 20 }} /> : null}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>

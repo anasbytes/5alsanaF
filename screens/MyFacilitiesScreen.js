@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useContext, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Alert, Modal, TextInput, ScrollView, Image, RefreshControl } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,6 +26,7 @@ export default function MyFacilitiesScreen() {
 
     const [facilities, setFacilities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
     const [editingFacility, setEditingFacility] = useState(null);
@@ -48,7 +49,7 @@ export default function MyFacilitiesScreen() {
         }, [])
     );
 
-    const fetchFacilities = async () => {
+    const fetchFacilities = async (isRefresh = false) => {
         try {
             const token = await SecureStore.getItemAsync('token');
             const response = await fetch(`${BACKEND_URL}/facilities/owner/me`, {
@@ -69,7 +70,13 @@ export default function MyFacilitiesScreen() {
             console.error(err);
         } finally {
             setLoading(false);
+            if (isRefresh) setRefreshing(false);
         }
+    };
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchFacilities(true);
     };
 
     const resetForm = () => {
@@ -339,6 +346,7 @@ export default function MyFacilitiesScreen() {
                     renderItem={renderFacility}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="business-outline" size={60} color="#D0D0D0" />

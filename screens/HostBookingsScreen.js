@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, Alert, TouchableOpacity, RefreshControl } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../utils/AuthContext';
@@ -15,6 +15,7 @@ export default function HostBookingsScreen({ navigation }) {
 
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
     const [updatingId, setUpdatingId] = useState(null);
 
     const fetchHostBookings = useCallback(async () => {
@@ -52,6 +53,7 @@ export default function HostBookingsScreen({ navigation }) {
             console.error('Error fetching host bookings:', error);
         } finally {
             setLoading(false);
+            setRefreshing(false);
         }
     }, [signOut]);
 
@@ -61,6 +63,11 @@ export default function HostBookingsScreen({ navigation }) {
         });
         return unsubscribe;
     }, [navigation, fetchHostBookings]);
+
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchHostBookings();
+    };
 
     const updateBookingStatus = async (bookingId, newStatus) => {
         setUpdatingId(bookingId);
@@ -212,6 +219,7 @@ export default function HostBookingsScreen({ navigation }) {
                     renderItem={renderBooking}
                     contentContainerStyle={styles.listContainer}
                     showsVerticalScrollIndicator={false}
+                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <Ionicons name="calendar-clear-outline" size={60} color="#D0D0D0" />
