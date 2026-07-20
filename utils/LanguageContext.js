@@ -395,8 +395,12 @@ export const LanguageProvider = ({ children }) => {
         I18nManager.allowRTL(isRTL);
         I18nManager.forceRTL(isRTL);
 
-        setTimeout(() => {
-            Updates.reloadAsync();
+        setTimeout(async () => {
+            try {
+                await Updates.reloadAsync();
+            } catch (error) {
+                console.log('Reload not supported in this environment (e.g. Expo Go). Restart the app manually to apply RTL changes.', error);
+            }
         }, 100);
     };
 

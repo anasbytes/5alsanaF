@@ -52,8 +52,10 @@ export default function MapScreen({ navigation }) {
         try {
             const token = await SecureStore.getItemAsync('token');
             const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities?limit=50&offset=0`, {
-                headers: { 'Authorization': `Bearer ${token}`,
-                 'ngrok-skip-browser-warning': 'true' }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true'
+                }
             });
             const data = await response.json();
 
@@ -129,7 +131,7 @@ export default function MapScreen({ navigation }) {
                                     <Text style={styles.calloutTypeText}>{f.type ? (t(f.type.toLowerCase()) || f.type.toUpperCase()) : 'GENERAL'}</Text>
                                 </View>
 
-                                <Text style={styles.calloutPrice}>{f.price_per_hour} EGP</Text>
+                                <Text style={styles.calloutPrice}>{formatNumber(f.price_per_hour)} {t('egp') || 'EGP'}</Text>
 
                                 {f.distance !== undefined && f.distance !== Infinity && (
                                     <Text style={styles.calloutDistance}>{f.distance.toFixed(1)} {t('km_away') || 'km away'}</Text>

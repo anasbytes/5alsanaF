@@ -4,10 +4,12 @@ import * as SecureStore from 'expo-secure-store';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../utils/LanguageContext';
+import { AuthContext } from '../utils/AuthContext';
 
 export default function FacilityDetailsScreen({ route, navigation }) {
     const { facility, booking } = route.params;
     const { t, language, formatNumber } = useContext(LanguageContext);
+    const { signOut } = useContext(AuthContext);
 
     const getDisplayStatus = (item) => {
         if (!item) return null;
@@ -94,7 +96,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         }
     }, []);
 
-   const fetchFullFacility = async () => {
+    const fetchFullFacility = async () => {
         try {
             const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities/${facility.id}`);
             if (res.ok) {
@@ -265,10 +267,12 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 })
             });
 
-            if (response.ok) {
+           if (response.ok) {
                 alert(t('request_sent') || 'Request Sent! Waiting for host approval.');
                 setIsModalVisible(false);
                 fetchFacilityAvailability();
+            } else if (response.status === 401 || response.status === 403) {
+                await signOut();
             } else if (response.status === 409) {
                 // 🛡️ DOUBLE-BOOKING PREVENTED
                 alert(t('slot_taken') || 'Too late! Someone just booked this exact time slot. Please choose another time.');
@@ -279,12 +283,11 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 setEndTime(null);
                 setSelectionMode('start');
             } else {
-                const data = await response.json();
-                alert((t('booking_failed') || 'Failed to book: ') + JSON.stringify(data.errors || data.error));
+                alert(t('booking_failed') || 'Failed to book. Please try again.');
             }
         } catch (error) {
             console.error("Booking error:", error);
-            
+
             // 🛡️ OFFLINE PROTECTION
             if (error instanceof TypeError || error.message.includes('Network')) {
                 alert(t('offline_error') || 'You appear to be offline. Please check your connection and try again.');
@@ -322,12 +325,14 @@ export default function FacilityDetailsScreen({ route, navigation }) {
             if (response.ok) {
                 setCurrentBookingStatus('CANCELLED');
                 Alert.alert(t('success') || "Success", t('request_cancelled_success') || "Your request has been cancelled.");
+            } else if (response.status === 401 || response.status === 403) {
+                await signOut();
             } else {
                 Alert.alert(t('error') || "Error", t('cancel_failed') || "Failed to cancel. Please try again.");
             }
         } catch (error) {
             console.error("Cancellation Error:", error);
-            
+
             // 🛡️ OFFLINE PROTECTION
             if (error instanceof TypeError || error.message.includes('Network')) {
                 Alert.alert(t('offline_error') || "Offline", t('offline_msg') || "You appear to be offline. Please check your connection.");
