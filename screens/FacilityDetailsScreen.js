@@ -47,6 +47,9 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     const [endTime, setEndTime] = useState(null);
     const [selectionMode, setSelectionMode] = useState('start');
 
+    const [isFavorited, setIsFavorited] = useState(false);
+    const [favLoading, setFavLoading] = useState(false);
+
     const fadeAnim = useRef(new Animated.Value(1)).current;
 
     const now = new Date();
@@ -91,10 +94,45 @@ export default function FacilityDetailsScreen({ route, navigation }) {
 
     useEffect(() => {
         fetchFullFacility();
+        checkFavoriteStatus();
         if (!booking) {
             if (facility?.id) fetchFacilityAvailability();
         }
     }, []);
+
+    const checkFavoriteStatus = async () => {
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/favorites/check/${facility.id}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setIsFavorited(data.is_favorited);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const toggleFavorite = async () => {
+        if (favLoading) return;
+        setFavLoading(true);
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/favorites/toggle/${facility.id}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.status === 401 || res.status === 403) { await signOut(); return; }
+            if (res.ok) {
+                const data = await res.json();
+                setIsFavorited(data.is_favorited);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setFavLoading(false);
+        }
+    };
 
     const fetchFullFacility = async () => {
         try {
@@ -425,6 +463,13 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
                             <Ionicons name="arrow-back" size={24} color="#13294B" />
                         </TouchableOpacity>
+                        <TouchableOpacity style={styles.favoriteButton} onPress={toggleFavorite} disabled={favLoading}>
+                            <Ionicons
+                                name={isFavorited ? 'heart' : 'heart-outline'}
+                                size={24}
+                                color={isFavorited ? '#E8751A' : '#13294B'}
+                            />
+                        </TouchableOpacity>
 
                         {booking ? (
                             <TouchableOpacity
@@ -649,5 +694,6 @@ const styles = StyleSheet.create({
     backToCalendarTextSmall: { color: '#13294B', fontSize: 15, fontWeight: '900' },
     confirmBookingButton: { backgroundColor: '#E8751A', paddingVertical: 14, borderRadius: 10, alignItems: 'center', flex: 0.7, borderWidth: 1, borderColor: '#E8751A' },
     confirmBookingDisabled: { backgroundColor: '#D4D0C8', borderColor: '#D4D0C8' },
-    confirmBookingText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' }
+    confirmBookingText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+    favoriteButton: { backgroundColor: '#FFFFFF', width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#13294B' },
 });
