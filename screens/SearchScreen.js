@@ -54,11 +54,21 @@ export default function SearchScreen({ navigation }) {
     };
 
     useEffect(() => {
-        const controller = new AbortController();
-        fetchFacilities(0, controller.signal);
         fetchUserLocation();
-        return () => controller.abort();
     }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        const debounceTimer = setTimeout(() => {
+            setPage(0);
+            setHasMore(true);
+            fetchFacilities(0, controller.signal, activeCategory, searchQuery);
+        }, 350);
+        return () => {
+            clearTimeout(debounceTimer);
+            controller.abort();
+        };
+    }, [activeCategory, searchQuery]);
 
     const fetchUserLocation = async () => {
         try {
@@ -72,21 +82,23 @@ export default function SearchScreen({ navigation }) {
         }
     };
 
-    const fetchFacilities = async (pageNumber, signal) => {
+    const fetchFacilities = async (pageNumber, signal, category = activeCategory, search = searchQuery) => {
         // EARLY EXIT: Prevent infinite loops if there is no internet connection
         const networkState = await NetInfo.fetch();
         if (!networkState.isConnected) {
             setLoading(false);
             setLoadingMore(false);
-            return; 
+            return;
         }
 
         try {
             const token = await SecureStore.getItemAsync('token');
             const limit = 10;
             const offset = pageNumber * limit;
+            const typeParam = category && category !== 'All' ? `&type=${encodeURIComponent(category)}` : '';
+            const searchParam = search && search.trim() ? `&search=${encodeURIComponent(search.trim())}` : '';
 
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities?limit=${limit}&offset=${offset}`, {
+            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities?limit=${limit}&offset=${offset}${typeParam}${searchParam}`, {
                 signal,
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -128,12 +140,7 @@ export default function SearchScreen({ navigation }) {
     };
 
     const getFilteredFacilities = () => {
-        let result = facilities.filter(f => {
-            const matchesName = f.name.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesLocation = f.location.toLowerCase().includes(searchQuery.toLowerCase());
-            const matchesCategory = activeCategory === 'All' || f.type.toLowerCase() === activeCategory.toLowerCase();
-            return (matchesName || matchesLocation) && matchesCategory;
-        });
+        let result = facilities;
 
         if (userCoords) {
             result = result.map(f => {

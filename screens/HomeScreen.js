@@ -50,11 +50,16 @@ export default function HomeScreen({ navigation }) {
     const [loadingMore, setLoadingMore] = useState(false);
 
     useEffect(() => {
-        const controller = new AbortController();
-        fetchFacilities(0, controller.signal);
         fetchUserLocation();
-        return () => controller.abort();
     }, []);
+
+    useEffect(() => {
+        const controller = new AbortController();
+        setPage(0);
+        setHasMore(true);
+        fetchFacilities(0, controller.signal, activeCategory);
+        return () => controller.abort();
+    }, [activeCategory]);
 
     const fetchUserLocation = async () => {
         try {
@@ -93,7 +98,7 @@ export default function HomeScreen({ navigation }) {
                 setUserLocation(searchLocationText.trim());
                 setUserCoords({ latitude: geocodeResult[0].latitude, longitude: geocodeResult[0].longitude });
                 setLocationModalVisible(false);
-                searchLocationText('');
+                setSearchLocationText('');
             } else {
                 Alert.alert(t('not_found') || "Not Found", t('location_not_found_msg') || "We couldn't find that location.");
             }
@@ -104,22 +109,23 @@ export default function HomeScreen({ navigation }) {
         }
     };
 
-    const fetchFacilities = async (pageNumber, signal) => {
+    const fetchFacilities = async (pageNumber, signal, category = activeCategory) => {
         // EARLY EXIT: Prevent infinite loops if there is no internet connection
         const networkState = await NetInfo.fetch();
         if (!networkState.isConnected) {
             setLoading(false);
             setRefreshing(false);
             setLoadingMore(false);
-            return; 
+            return;
         }
 
         try {
             const token = await SecureStore.getItemAsync('token');
             const limit = 10;
             const offset = pageNumber * limit;
+            const typeParam = category && category !== 'All' ? `&type=${encodeURIComponent(category)}` : '';
 
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities?limit=${limit}&offset=${offset}`, {
+            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities?limit=${limit}&offset=${offset}${typeParam}`, {
                 signal,
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -172,10 +178,7 @@ export default function HomeScreen({ navigation }) {
         return <ActivityIndicator size="small" color="#E8751A" style={{ marginVertical: 20 }} />;
     };
 
-    let displayList = facilities.filter(facility => {
-        if (activeCategory === 'All') return true;
-        return facility.type.toLowerCase() === activeCategory.toLowerCase();
-    });
+    let displayList = facilities;
 
     if (userCoords) {
         displayList = displayList.map(f => {
@@ -204,7 +207,7 @@ export default function HomeScreen({ navigation }) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('Home', { screen: 'FacilityDetails', params: { facility: item } })}
         >
-            <Image source={{ uri: item.image_url || 'https://via.placeholder.com/400x200.png?text=No+Image' }} style={styles.cardImage} />
+            <Image source={item.image_url ? { uri: item.image_url } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
 
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>

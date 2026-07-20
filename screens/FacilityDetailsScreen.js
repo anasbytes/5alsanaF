@@ -267,7 +267,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 })
             });
 
-           if (response.ok) {
+            if (response.ok) {
                 alert(t('request_sent') || 'Request Sent! Waiting for host approval.');
                 setIsModalVisible(false);
                 fetchFacilityAvailability();
@@ -276,9 +276,9 @@ export default function FacilityDetailsScreen({ route, navigation }) {
             } else if (response.status === 409) {
                 // 🛡️ DOUBLE-BOOKING PREVENTED
                 alert(t('slot_taken') || 'Too late! Someone just booked this exact time slot. Please choose another time.');
-                
+
                 fetchFacilityAvailability();
-                
+
                 setStartTime(null);
                 setEndTime(null);
                 setSelectionMode('start');
@@ -382,7 +382,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 </View>
 
                 <View style={styles.imageContainer}>
-                    <Image source={{ uri: fullFacility?.image_url || 'https://via.placeholder.com/400x200.png?text=No+Image' }} style={styles.facilityImage} />
+                    <Image source={fullFacility?.image_url ? { uri: fullFacility.image_url } : require('../assets/no-image-placeholder.png')} style={styles.facilityImage} />
                 </View>
 
                 <ScrollView contentContainerStyle={styles.bottomGroup} showsVerticalScrollIndicator={false}>

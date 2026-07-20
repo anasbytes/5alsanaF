@@ -52,8 +52,10 @@ export default function MyFacilitiesScreen() {
         try {
             const token = await SecureStore.getItemAsync('token');
             const response = await fetch(`${BACKEND_URL}/facilities/owner/me`, {
-                headers: { 'Authorization': `Bearer ${token}`,
-                 'ngrok-skip-browser-warning': 'true' }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true'
+                }
             });
 
             if (response.status === 401 || response.status === 403) {
@@ -247,11 +249,22 @@ export default function MyFacilitiesScreen() {
                             const token = await SecureStore.getItemAsync('token');
                             const response = await fetch(`${BACKEND_URL}/facilities/${facility.id}`, {
                                 method: 'DELETE',
-                                headers: { 'Authorization': `Bearer ${token}`,
-                                 'ngrok-skip-browser-warning': 'true' }
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'ngrok-skip-browser-warning': 'true'
+                                }
                             });
 
-                            if (response.ok) fetchFacilities();
+                            if (response.status === 401 || response.status === 403) {
+                                await signOut();
+                                return;
+                            }
+
+                            if (response.ok) {
+                                fetchFacilities();
+                            } else {
+                                Alert.alert(t('error_generic') || 'Error', t('something_went_wrong') || 'Failed to delete facility.');
+                            }
                         } catch (err) {
                             Alert.alert(t('network_error'), t('check_connection'));
                         }
