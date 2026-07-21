@@ -68,6 +68,7 @@ export default function SearchScreen({ navigation }) {
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [favoritedIds, setFavoritedIds] = useState(new Set());
 
     const categories = [
         { value: 'All', labelKey: 'type_all' },
@@ -78,16 +79,18 @@ export default function SearchScreen({ navigation }) {
         { value: 'Playstation', labelKey: 'type_playstation' },
     ];
 
-    const sortOptions = ['default', 'closest', 'price_asc', 'price_desc'];
+    const sortOptions = ['default', 'closest', 'price_asc', 'price_desc', 'favorites'];
     const sortLabels = {
         default: t('sort_default'),
         closest: t('closest_to_me'),
         price_asc: t('lowest_price'),
-        price_desc: t('highest_price')
+        price_desc: t('highest_price'),
+        favorites: t('favorites') || 'Favorites',
     };
 
     useEffect(() => {
         fetchUserLocation();
+        fetchFavoriteIds();
     }, []);
 
     useEffect(() => {
@@ -116,6 +119,19 @@ export default function SearchScreen({ navigation }) {
         } catch (error) {
             console.log("Could not get location for search screen", error);
         }
+    };
+
+    const fetchFavoriteIds = async () => {
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/favorites`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setFavoritedIds(new Set(data.map(f => f.id)));
+            }
+        } catch (e) { console.error(e); }
     };
 
     const fetchFacilities = async (pageNumber, signal, category = activeCategory, search = searchQuery) => {
@@ -186,6 +202,10 @@ export default function SearchScreen({ navigation }) {
 
     const getFilteredFacilities = () => {
         let result = facilities;
+
+        if (sortBy === 'favorites') {
+            result = result.filter(f => favoritedIds.has(f.id));
+        }
 
         if (userCoords) {
             result = result.map(f => {

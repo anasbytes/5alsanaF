@@ -17,6 +17,7 @@ import SearchScreen from './screens/SearchScreen';
 import BookingsScreen from './screens/BookingsScreen';
 import AccountScreen from './screens/AccountScreen';
 import FacilityDetailsScreen from './screens/FacilityDetailsScreen';
+import BookingReceiptScreen from './screens/BookingReceiptScreen';
 import HostDashboardScreen from './screens/HostDashboardScreen';
 import MapScreen from './screens/MapScreen';
 
@@ -35,36 +36,36 @@ function AnimatedSplashScreen({ onAnimationComplete }) {
     Animated.sequence([
       // 1. Cinematic fade and glide in simultaneously
       Animated.parallel([
-        Animated.timing(opacity, { 
-          toValue: 1, 
+        Animated.timing(opacity, {
+          toValue: 1,
           duration: 1000, // Slower, smoother fade
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true 
+          useNativeDriver: true
         }),
-        Animated.timing(scale, { 
-          toValue: 1, 
+        Animated.timing(scale, {
+          toValue: 1,
           duration: 1000, // Replaced spring with a smooth easing timing
           easing: Easing.out(Easing.ease),
-          useNativeDriver: true 
+          useNativeDriver: true
         })
       ]),
       // 2. Hold the logo on screen for 1.2 seconds
       Animated.delay(1200),
       // 3. Fade out seamlessly into the home screen
-      Animated.timing(opacity, { 
-        toValue: 0, 
-        duration: 600, 
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 600,
         easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true 
+        useNativeDriver: true
       })
     ]).start(() => onAnimationComplete());
   }, [opacity, scale, onAnimationComplete]);
 
   return (
     <View style={[StyleSheet.absoluteFill, styles.splashContainer]}>
-      <Animated.Image 
+      <Animated.Image
         source={require('./assets/splash.png')}
-        style={[styles.splashImage, { opacity, transform: [{ scale }] }]} 
+        style={[styles.splashImage, { opacity, transform: [{ scale }] }]}
       />
     </View>
   );
@@ -76,6 +77,7 @@ function HomeStackNavigator() {
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
       <HomeStack.Screen name="FacilityDetails" component={FacilityDetailsScreen} />
+      <HomeStack.Screen name="BookingReceipt" component={BookingReceiptScreen} />
       <HomeStack.Screen name="MapScreen" component={MapScreen} />
     </HomeStack.Navigator>
   );
@@ -215,7 +217,7 @@ export default function App() {
           <OfflineBanner />
           {/* Load the actual app in the background so it's ready when the animation finishes */}
           <RootNavigator />
-          
+
           {/* Overlay the custom animation on top of everything until it completes */}
           {!animationComplete && (
             <AnimatedSplashScreen onAnimationComplete={() => setAnimationComplete(true)} />

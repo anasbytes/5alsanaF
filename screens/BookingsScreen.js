@@ -181,6 +181,18 @@ export default function BookingsScreen({ navigation }) {
                         </View>
                     </View>
                 </View>
+
+                <TouchableOpacity
+                    style={styles.receiptButton}
+                    onPress={() => navigation.navigate('Home', {
+                        screen: 'BookingReceipt',
+                        initial: false,
+                        params: { booking: item }
+                    })}
+                >
+                    <Ionicons name="receipt-outline" size={14} color="#E8751A" />
+                    <Text style={styles.receiptButtonText}>{t('view_receipt') || 'View Receipt'}</Text>
+                </TouchableOpacity>
             </TouchableOpacity>
         );
     };
@@ -258,4 +270,6 @@ const styles = StyleSheet.create({
     timeValue: { fontSize: 14, fontWeight: '800', color: '#13294B' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 80 },
     emptyText: { fontSize: 16, fontWeight: '800', color: '#888888', marginTop: 15, textAlign: 'center' },
+    receiptButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E8751A', gap: 6 },
+    receiptButtonText: { fontSize: 13, color: '#E8751A', fontWeight: '600' },
 });

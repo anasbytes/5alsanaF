@@ -292,20 +292,20 @@ export default function HomeScreen({ navigation }) {
         <View style={{ marginBottom: 5 }}>
             {recentFacilities.length > 0 && (
                 <View style={styles.recentSection}>
-                    <Text style={[styles.sectionTitle, { paddingHorizontal: 20 }]}>{t('recently_viewed') || 'Recently Viewed'}</Text>
+                    <Text style={[styles.sectionTitle, { paddingLeft: 10, paddingRight: 20 }]}>{t('recently_viewed') || 'Recently Viewed'}</Text>
                     <FlatList
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         data={recentFacilities}
                         keyExtractor={(item) => 'recent_' + item.id}
-                        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10, paddingTop: 5 }}
+                        contentContainerStyle={{paddingLeft: 10, paddingRight: 20 , paddingBottom: 10, paddingTop: 5 }}
                         renderItem={renderRecentFacility}
                     />
                 </View>
             )}
             {/* Show title only if not actively loading the whole category to avoid weird flashing */}
             {!loading && (
-                 <Text style={[styles.sectionTitle, { paddingHorizontal: 20, marginBottom: 15 }]}>
+                 <Text style={[styles.sectionTitle, { paddingLeft: 10, paddingRight: 20, marginBottom: 15 }]}>
                     {t('explore_facilities') || 'Explore Facilities'}
                 </Text>
             )}
@@ -452,15 +452,15 @@ const styles = StyleSheet.create({
     
     // --- RECENTLY VIEWED STYLES ---
     recentSection: { marginBottom: 15 },
-    sectionTitle: { fontSize: 18, fontWeight: '800', color: '#13294B', marginBottom: 10, letterSpacing: 0.2 },
-    recentCard: { width: 140, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8', marginEnd: 12, overflow: 'hidden', shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+    sectionTitle: { fontSize: 22, fontWeight: '800', color: '#13294B', marginBottom: 10, letterSpacing: 0.2 ,},
+    recentCard: { width: 160, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8', marginEnd: 12, overflow: 'hidden', shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
     recentImage: { width: '100%', height: 90, resizeMode: 'cover', borderBottomWidth: 1, borderColor: '#EAE6DF' },
     recentInfo: { padding: 10 },
     recentTitle: { fontSize: 14, fontWeight: '800', color: '#13294B', marginBottom: 4 },
     recentPrice: { fontSize: 13, fontWeight: '800', color: '#E8751A' },
     // ------------------------------
 
-    listContainer: { paddingHorizontal: 20, paddingBottom: 20 },
+    listContainer: { paddingLeft: 10, paddingRight: 10, paddingBottom: 20 },
     card: { backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8', marginBottom: 16, shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 3, elevation: 2, overflow: 'hidden' },
     cardImage: { width: '100%', height: 160, resizeMode: 'cover', borderBottomWidth: 1, borderColor: '#EAE6DF' },
     cardContent: { padding: 16 },

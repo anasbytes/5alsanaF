@@ -49,6 +49,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
 
     const [isFavorited, setIsFavorited] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
+    const [reviews, setReviews] = useState({ reviews: [], average: 0, total: 0 });
 
     const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -95,6 +96,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     useEffect(() => {
         fetchFullFacility();
         checkFavoriteStatus();
+        fetchReviews();
         if (!booking) {
             if (facility?.id) fetchFacilityAvailability();
         }
@@ -109,6 +111,18 @@ export default function FacilityDetailsScreen({ route, navigation }) {
             if (res.ok) {
                 const data = await res.json();
                 setIsFavorited(data.is_favorited);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const fetchReviews = async () => {
+        try {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reviews/facility/${facility.id}`, {
+                headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setReviews(data);
             }
         } catch (e) { console.error(e); }
     };
@@ -444,6 +458,37 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                             </View>
                         ) : null}
 
+                        {/* Reviews Section */}
+                        <View style={styles.divider} />
+                        <View style={styles.reviewsSection}>
+                            <View style={styles.reviewsHeader}>
+                                <Text style={styles.reviewsTitle}>{t('reviews') || 'Reviews'}</Text>
+                                {reviews.total > 0 && (
+                                    <View style={styles.ratingBadge}>
+                                        <Ionicons name="star" size={14} color="#F59E0B" />
+                                        <Text style={styles.ratingBadgeText}>{reviews.average} ({reviews.total})</Text>
+                                    </View>
+                                )}
+                            </View>
+                            {reviews.reviews.length === 0 ? (
+                                <Text style={styles.noReviewsText}>{t('no_reviews_yet') || 'No reviews yet.'}</Text>
+                            ) : (
+                                reviews.reviews.slice(0, 3).map(r => (
+                                    <View key={r.id} style={styles.reviewCard}>
+                                        <View style={styles.reviewHeader}>
+                                            <Text style={styles.reviewUsername}>{r.username}</Text>
+                                            <View style={styles.starsRow}>
+                                                {[1, 2, 3, 4, 5].map(s => (
+                                                    <Ionicons key={s} name={s <= r.rating ? 'star' : 'star-outline'} size={12} color="#F59E0B" />
+                                                ))}
+                                            </View>
+                                        </View>
+                                        {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
+                                    </View>
+                                ))
+                            )}
+                        </View>
+
                         {booking && (
                             <View style={styles.bookingDetails}>
                                 <View style={styles.divider} />
@@ -696,4 +741,15 @@ const styles = StyleSheet.create({
     confirmBookingDisabled: { backgroundColor: '#D4D0C8', borderColor: '#D4D0C8' },
     confirmBookingText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
     favoriteButton: { backgroundColor: '#FFFFFF', width: 56, height: 56, borderRadius: 12, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#13294B' },
+    reviewsSection: { marginVertical: 8 },
+    reviewsHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+    reviewsTitle: { fontSize: 13, color: '#888888', fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+    ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 10 },
+    ratingBadgeText: { fontSize: 13, fontWeight: '700', color: '#92400E' },
+    noReviewsText: { fontSize: 14, color: '#AAAAAA', fontStyle: 'italic' },
+    reviewCard: { backgroundColor: '#F9F6F0', borderRadius: 10, padding: 12, marginBottom: 8 },
+    reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+    reviewUsername: { fontSize: 13, fontWeight: '700', color: '#13294B' },
+    starsRow: { flexDirection: 'row', gap: 2 },
+    reviewComment: { fontSize: 13, color: '#555', lineHeight: 18 },
 });
