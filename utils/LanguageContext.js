@@ -57,6 +57,19 @@ const translations = {
         host: "HOST",
         player: "PLAYER",
 
+        analytics: "Analytics",
+        analytics_revenue: "Revenue (EGP)",
+        analytics_total_bookings: "Total Bookings",
+        analytics_status_breakdown: "Status Breakdown",
+        analytics_weekly: "Bookings per Week",
+        analytics_busiest_hours: "Busiest Hours",
+        analytics_top_facilities: "Top Facilities",
+        analytics_no_data: "No bookings yet. Analytics will appear here once you receive bookings.",
+        analytics_this_week: "This week",
+        analytics_last_week: "Last week",
+        analytics_2w_ago: "2w ago",
+        analytics_3w_ago: "3w ago",
+
         // Search
         discover: "Discover",
         find_perfect_place: "Find the perfect place to play",
@@ -390,6 +403,19 @@ const translations = {
         passwords_not_match: "كلمات المرور غير متطابقة.",
         password_length: "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
         error: "خطأ",
+
+        analytics: "التحليلات",
+        analytics_revenue: "الإيرادات (ج.م)",
+        analytics_total_bookings: "إجمالي الحجوزات",
+        analytics_status_breakdown: "توزيع الحالات",
+        analytics_weekly: "الحجوزات أسبوعياً",
+        analytics_busiest_hours: "أكثر الأوقات ازدحاماً",
+        analytics_top_facilities: "أفضل الملاعب",
+        analytics_no_data: "لا توجد حجوزات بعد. ستظهر التحليلات هنا بمجرد استقبال الحجوزات.",
+        analytics_this_week: "هذا الأسبوع",
+        analytics_last_week: "الأسبوع الماضي",
+        analytics_2w_ago: "منذ أسبوعين",
+        analytics_3w_ago: "منذ 3 أسابيع",
 
         // Bookings
         my_bookings: "حجوزاتي",

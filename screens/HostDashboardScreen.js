@@ -5,6 +5,7 @@ import { createMaterialTopTabNavigator } from '@react-navigation/material-top-ta
 // Import your two host screens
 import MyFacilitiesScreen from './MyFacilitiesScreen';
 import HostBookingsScreen from './HostBookingsScreen';
+import HostAnalyticsScreen from './HostAnalyticsScreen';
 
 // 🌐 Import Language Context
 import { LanguageContext } from '../utils/LanguageContext';
@@ -26,15 +27,20 @@ export default function HostDashboardScreen() {
                     tabBarStyle: { backgroundColor: '#F9F6F0', elevation: 0, shadowOpacity: 0, borderBottomWidth: 1, borderBottomColor: '#D4D0C8' },
                 }}
             >
-                <TopTab.Screen 
-                    name="FacilitiesList" 
-                    component={MyFacilitiesScreen} 
-                    options={{ tabBarLabel: t('my_facilities') || 'My Facilities' }} 
+                <TopTab.Screen
+                    name="FacilitiesList"
+                    component={MyFacilitiesScreen}
+                    options={{ tabBarLabel: t('my_facilities') || 'My Facilities' }}
+                />
+                <TopTab.Screen
+                    name="HostRequests"
+                    component={HostBookingsScreen}
+                    options={{ tabBarLabel: t('requests') || 'Requests' }}
                 />
                 <TopTab.Screen 
-                    name="HostRequests" 
-                    component={HostBookingsScreen} 
-                    options={{ tabBarLabel: t('requests') || 'Requests' }} 
+                    name="Analytics" 
+                    component={HostAnalyticsScreen} 
+                    options={{ tabBarLabel: t('analytics') || 'Analytics' }} 
                 />
             </TopTab.Navigator>
         </SafeAreaView>
