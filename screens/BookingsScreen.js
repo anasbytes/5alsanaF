@@ -134,6 +134,7 @@ export default function BookingsScreen({ navigation }) {
         const date = new Date(item.booking_date).toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
 
         const statusConfig = getDisplayStatus(item);
+        const isCompleted = statusConfig.rawText === 'COMPLETED';
 
         return (
             <TouchableOpacity
@@ -178,9 +179,27 @@ export default function BookingsScreen({ navigation }) {
                     </View>
                 </View>
 
+                {isCompleted && (
+                    <TouchableOpacity
+                        style={styles.ratePrompt}
+                        onPress={() => navigation.navigate('BookingReceipt', {
+                            booking: { ...item, derivedStatus: 'completed' }
+                        })}
+                    >
+                        <View style={styles.rateStars}>
+                            {[1, 2, 3, 4, 5].map(s => (
+                                <Ionicons key={s} name="star-outline" size={16} color="#F59E0B" />
+                            ))}
+                        </View>
+                        <Text style={styles.ratePromptText}>{t('rate_experience') || 'Rate your experience'}</Text>
+                    </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                     style={styles.receiptButton}
-                    onPress={() => navigation.navigate('BookingReceipt', { booking: item })}
+                    onPress={() => navigation.navigate('BookingReceipt', {
+                        booking: { ...item, derivedStatus: isCompleted ? 'completed' : item.status }
+                    })}
                 >
                     <Ionicons name="receipt-outline" size={14} color="#E8751A" />
                     <Text style={styles.receiptButtonText}>{t('view_receipt') || 'View Receipt'}</Text>
@@ -264,4 +283,7 @@ const styles = StyleSheet.create({
     emptyText: { fontSize: 16, fontWeight: '800', color: '#888888', marginTop: 15, textAlign: 'center' },
     receiptButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E8751A', gap: 6 },
     receiptButtonText: { fontSize: 13, color: '#E8751A', fontWeight: '600' },
+    ratePrompt: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 10, borderRadius: 8, backgroundColor: '#FEF3C7', gap: 8 },
+    rateStars: { flexDirection: 'row', gap: 2 },
+    ratePromptText: { fontSize: 13, color: '#92400E', fontWeight: '600' },
 });

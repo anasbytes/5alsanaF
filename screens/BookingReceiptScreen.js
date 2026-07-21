@@ -15,7 +15,7 @@ export default function BookingReceiptScreen({ route, navigation }) {
     const [rating, setRating] = useState(0);
     const [comment, setComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
-    const isCompleted = booking.status?.toLowerCase() === 'completed';
+    const isCompleted = booking.derivedStatus === 'completed' || booking.status?.toLowerCase() === 'completed';
 
     const BACKEND_URL = process.env.EXPO_PUBLIC_API_URL;
 
@@ -198,7 +198,7 @@ export default function BookingReceiptScreen({ route, navigation }) {
                         {!hasReviewed && (
                             <>
                                 <View style={styles.starsRow}>
-                                    {[1,2,3,4,5].map(s => (
+                                    {[1, 2, 3, 4, 5].map(s => (
                                         <TouchableOpacity key={s} onPress={() => setRating(s)}>
                                             <Ionicons
                                                 name={s <= rating ? 'star' : 'star-outline'}
