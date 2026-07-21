@@ -6,7 +6,7 @@ import { LanguageContext } from '../utils/LanguageContext';
 import { AuthContext } from '../utils/AuthContext';
 
 export default function BookingReceiptScreen({ route, navigation }) {
-    const { booking } = route.params;
+    const { booking, onReviewed } = route.params;
     const { t, language, formatNumber } = useContext(LanguageContext);
     const { signOut } = useContext(AuthContext);
     const isRTL = language === 'ar';
@@ -61,6 +61,7 @@ export default function BookingReceiptScreen({ route, navigation }) {
             if (res.status === 401 || res.status === 403) { await signOut(); return; }
             if (res.ok) {
                 setHasReviewed(true);
+                if (onReviewed) onReviewed();
                 Alert.alert(t('success') || 'Success', t('review_submitted') || 'Review submitted. Thank you!');
             } else if (res.status === 409) {
                 setHasReviewed(true);

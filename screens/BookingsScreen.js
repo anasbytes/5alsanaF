@@ -13,10 +13,12 @@ export default function BookingsScreen({ navigation }) {
     const [bookings, setBookings] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [reviewedBookingIds, setReviewedBookingIds] = useState(new Set());
 
     useFocusEffect(
         useCallback(() => {
             fetchBookings();
+            fetchReviewedIds();
         }, [])
     );
 
@@ -75,6 +77,20 @@ export default function BookingsScreen({ navigation }) {
     const onRefresh = () => {
         setRefreshing(true);
         fetchBookings();
+        fetchReviewedIds();
+    };
+
+    const fetchReviewedIds = async () => {
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/reviews/my-reviews`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setReviewedBookingIds(new Set(data.reviewed_booking_ids));
+            }
+        } catch (e) { console.error(e); }
     };
 
     const getDisplayStatus = (item) => {
@@ -179,11 +195,12 @@ export default function BookingsScreen({ navigation }) {
                     </View>
                 </View>
 
-                {isCompleted && (
+                {isCompleted && !reviewedBookingIds.has(item.id) && (
                     <TouchableOpacity
                         style={styles.ratePrompt}
                         onPress={() => navigation.navigate('BookingReceipt', {
-                            booking: { ...item, derivedStatus: 'completed' }
+                            booking: { ...item, derivedStatus: 'completed' },
+                            onReviewed: () => setReviewedBookingIds(prev => new Set([...prev, item.id]))
                         })}
                     >
                         <View style={styles.rateStars}>
