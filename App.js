@@ -76,8 +76,6 @@ function HomeStackNavigator() {
   return (
     <HomeStack.Navigator screenOptions={{ headerShown: false }}>
       <HomeStack.Screen name="HomeMain" component={HomeScreen} />
-      <HomeStack.Screen name="FacilityDetails" component={FacilityDetailsScreen} />
-      <HomeStack.Screen name="BookingReceipt" component={BookingReceiptScreen} />
       <HomeStack.Screen name="MapScreen" component={MapScreen} />
     </HomeStack.Navigator>
   );
@@ -156,7 +154,11 @@ function RootNavigator() {
         {userToken == null ? (
           <Stack.Screen name="Login" component={LoginScreen} />
         ) : (
-          <Stack.Screen name="MainTabs" component={userRole === 'host' ? HostTabs : PlayerTabs} />
+          <>
+            <Stack.Screen name="MainTabs" component={userRole === 'host' ? HostTabs : PlayerTabs} />
+            <Stack.Screen name="FacilityDetails" component={FacilityDetailsScreen} />
+            <Stack.Screen name="BookingReceipt" component={BookingReceiptScreen} />
+          </>
         )}
       </Stack.Navigator>
     </NavigationContainer>

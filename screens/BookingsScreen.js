@@ -120,13 +120,9 @@ export default function BookingsScreen({ navigation }) {
             price_per_hour: item.price_per_hour
         };
 
-        navigation.navigate('Home', {
-            screen: 'FacilityDetails',
-            initial: false,
-            params: {
-                facility: mappedFacility,
-                booking: item
-            }
+        navigation.navigate('FacilityDetails', {
+            facility: mappedFacility,
+            booking: item
         });
     };
 
@@ -184,11 +180,7 @@ export default function BookingsScreen({ navigation }) {
 
                 <TouchableOpacity
                     style={styles.receiptButton}
-                    onPress={() => navigation.navigate('Home', {
-                        screen: 'BookingReceipt',
-                        initial: false,
-                        params: { booking: item }
-                    })}
+                    onPress={() => navigation.navigate('BookingReceipt', { booking: item })}
                 >
                     <Ionicons name="receipt-outline" size={14} color="#E8751A" />
                     <Text style={styles.receiptButtonText}>{t('view_receipt') || 'View Receipt'}</Text>

@@ -98,7 +98,7 @@ export default function HomeScreen({ navigation }) {
         const controller = new AbortController();
         setPage(0);
         setHasMore(true);
-        setLoading(true); 
+        setLoading(true);
         fetchFacilities(0, controller.signal, activeCategory);
         return () => controller.abort();
     }, [activeCategory]);
@@ -119,10 +119,10 @@ export default function HomeScreen({ navigation }) {
             // Fetch existing
             const stored = await SecureStore.getItemAsync('recent_facilities');
             let recents = stored ? JSON.parse(stored) : [];
-            
+
             // Remove if already exists so we can bump it to the front
             recents = recents.filter(f => f.id !== facility.id);
-            
+
             // Minify object to avoid SecureStore 2048 byte overflow limit
             const minifiedFacility = {
                 id: facility.id,
@@ -132,18 +132,18 @@ export default function HomeScreen({ navigation }) {
                 type: facility.type,
                 location: facility.location
             };
-            
+
             // Add to front & limit to 5
             recents.unshift(minifiedFacility);
-            recents = recents.slice(0, 5); 
-            
+            recents = recents.slice(0, 5);
+
             await SecureStore.setItemAsync('recent_facilities', JSON.stringify(recents));
             setRecentFacilities(recents);
         } catch (e) {
             console.log('Error saving recent:', e);
         }
 
-        navigation.navigate('Home', { screen: 'FacilityDetails', params: { facility } });
+        navigation.navigate('FacilityDetails', { facility });
     };
 
     const fetchUserLocation = async () => {
@@ -298,14 +298,14 @@ export default function HomeScreen({ navigation }) {
                         showsHorizontalScrollIndicator={false}
                         data={recentFacilities}
                         keyExtractor={(item) => 'recent_' + item.id}
-                        contentContainerStyle={{paddingLeft: 10, paddingRight: 20 , paddingBottom: 10, paddingTop: 5 }}
+                        contentContainerStyle={{ paddingLeft: 10, paddingRight: 20, paddingBottom: 10, paddingTop: 5 }}
                         renderItem={renderRecentFacility}
                     />
                 </View>
             )}
             {/* Show title only if not actively loading the whole category to avoid weird flashing */}
             {!loading && (
-                 <Text style={[styles.sectionTitle, { paddingLeft: 10, paddingRight: 20, marginBottom: 15 }]}>
+                <Text style={[styles.sectionTitle, { paddingLeft: 10, paddingRight: 20, marginBottom: 15 }]}>
                     {t('explore_facilities') || 'Explore Facilities'}
                 </Text>
             )}
@@ -449,10 +449,10 @@ const styles = StyleSheet.create({
     activeCategoryBadge: { backgroundColor: '#13294B', borderColor: '#13294B' },
     categoryText: { fontSize: 13, fontWeight: '700', color: '#888888', textAlign: 'center' },
     activeCategoryText: { color: '#FFFFFF' },
-    
+
     // --- RECENTLY VIEWED STYLES ---
     recentSection: { marginBottom: 15 },
-    sectionTitle: { fontSize: 22, fontWeight: '800', color: '#13294B', marginBottom: 10, letterSpacing: 0.2 ,},
+    sectionTitle: { fontSize: 22, fontWeight: '800', color: '#13294B', marginBottom: 10, letterSpacing: 0.2, },
     recentCard: { width: 160, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#D4D0C8', marginEnd: 12, overflow: 'hidden', shadowColor: '#13294B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
     recentImage: { width: '100%', height: 90, resizeMode: 'cover', borderBottomWidth: 1, borderColor: '#EAE6DF' },
     recentInfo: { padding: 10 },

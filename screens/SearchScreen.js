@@ -112,7 +112,7 @@ export default function SearchScreen({ navigation }) {
             if (status === 'granted') {
                 let location = await Location.getCurrentPositionAsync({});
                 setUserCoords({ latitude: location.coords.latitude, longitude: location.coords.longitude });
-                
+
                 // 👇 ADD THIS LINE: Automatically switch to "Closest" sort if we get the location!
                 setSortBy('closest');
             }
@@ -241,7 +241,7 @@ export default function SearchScreen({ navigation }) {
         <TouchableOpacity
             style={styles.card}
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('Home', { screen: 'FacilityDetails', params: { facility: item } })}
+            onPress={() => navigation.navigate('FacilityDetails', { facility: item })}
         >
             <View style={styles.cardHeader}>
                 <View style={styles.titleContainer}>
