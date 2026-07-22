@@ -128,7 +128,7 @@ export default function HomeScreen({ navigation }) {
                 id: facility.id,
                 name: facility.name,
                 price_per_hour: facility.price_per_hour,
-                image_url: facility.image_url,
+                images: facility.images,
                 type: facility.type,
                 location: facility.location
             };
@@ -280,7 +280,7 @@ export default function HomeScreen({ navigation }) {
             activeOpacity={0.7}
             onPress={() => handleFacilityPress(item)}
         >
-            <Image source={item.image_url ? { uri: item.image_url } : require('../assets/no-image-placeholder.png')} style={styles.recentImage} />
+            <Image source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')} style={styles.recentImage} />
             <View style={styles.recentInfo}>
                 <Text style={styles.recentTitle} numberOfLines={1}>{item.name}</Text>
                 <Text style={styles.recentPrice}>{formatNumber(item.price_per_hour)} {t('egp') || 'EGP'}</Text>
@@ -318,7 +318,7 @@ export default function HomeScreen({ navigation }) {
             activeOpacity={0.7}
             onPress={() => handleFacilityPress(item)}
         >
-            <Image source={item.image_url ? { uri: item.image_url } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
+            <Image source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
 
             <View style={styles.cardContent}>
                 <View style={styles.cardHeader}>
