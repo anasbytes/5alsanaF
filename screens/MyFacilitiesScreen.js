@@ -35,7 +35,7 @@ export default function MyFacilitiesScreen() {
     const [type, setType] = useState('Football');
     const [location, setLocation] = useState('');
     const [price, setPrice] = useState('');
-    const [imageUrl, setImageUrl] = useState('');
+    const [images, setImages] = useState([]);
     const [description, setDescription] = useState('');
 
     const [isMapPickerVisible, setIsMapPickerVisible] = useState(false);
@@ -80,7 +80,7 @@ export default function MyFacilitiesScreen() {
     };
 
     const resetForm = () => {
-        setName(''); setType('Football'); setLocation(''); setPrice(''); setImageUrl('');
+        setName(''); setType('Football'); setLocation(''); setPrice(''); setImages([]);
         setDescription('');
         setPinCoords(null);
         setEditingFacility(null);
@@ -104,7 +104,7 @@ export default function MyFacilitiesScreen() {
         setType(matchedType);
         setLocation(facility.location);
         setPrice(facility.price_per_hour.toString());
-        setImageUrl(facility.image_url || '');
+        setImages(facility.images || []);
         setDescription(facility.description || '');
 
         if (facility.latitude && facility.longitude) {
@@ -117,17 +117,17 @@ export default function MyFacilitiesScreen() {
     };
 
     const pickImage = async () => {
-        let result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [16, 9],
-            quality: 0.8,
-        });
+    let result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        quality: 0.8,
+    });
 
-        if (!result.canceled) {
-            setImageUrl(result.assets[0].uri);
-        }
-    };
+    if (!result.canceled) {
+        const uris = result.assets.map(a => a.uri);
+        setImages(prev => [...prev, ...uris]);
+    }
+};
 
     const handleSnapToCurrentLocation = async () => {
         let { status } = await Location.requestForegroundPermissionsAsync();
@@ -168,80 +168,80 @@ export default function MyFacilitiesScreen() {
     };
 
     const handleSave = async () => {
-        if (!name.trim() || !location.trim() || !price.trim()) {
-            Alert.alert(t('missing_info'), t('fill_required_fields'));
-            return;
-        }
+    if (!name.trim() || !location.trim() || !price.trim()) {
+        Alert.alert(t('missing_info'), t('fill_required_fields'));
+        return;
+    }
 
-        if (!pinCoords) {
-            Alert.alert(t('missing_location'), t('pick_on_map_hint'));
-            return;
-        }
+    if (!pinCoords) {
+        Alert.alert(t('missing_location'), t('pick_on_map_hint'));
+        return;
+    }
 
-        const numericPrice = parseFloat(price.replace(/,/g, '').trim());
-        if (isNaN(numericPrice) || numericPrice < 0) {
-            Alert.alert(t('invalid_price'), t('invalid_price_message'));
-            return;
-        }
+    const numericPrice = parseFloat(price.replace(/,/g, '').trim());
+    if (isNaN(numericPrice) || numericPrice < 0) {
+        Alert.alert(t('invalid_price'), t('invalid_price_message'));
+        return;
+    }
 
-        setIsSubmitting(true);
+    setIsSubmitting(true);
 
-        try {
-            const token = await SecureStore.getItemAsync('token');
-            const method = editingFacility ? 'PUT' : 'POST';
-            const url = editingFacility
-                ? `${BACKEND_URL}/facilities/${editingFacility.id}`
-                : `${BACKEND_URL}/facilities`;
+    try {
+        const token = await SecureStore.getItemAsync('token');
+        const method = editingFacility ? 'PUT' : 'POST';
+        const url = editingFacility
+            ? `${BACKEND_URL}/facilities/${editingFacility.id}`
+            : `${BACKEND_URL}/facilities`;
 
-            const formData = new FormData();
-            formData.append('name', name.trim());
-            formData.append('type', type.toLowerCase());
-            formData.append('location', location.trim());
-            formData.append('price_per_hour', numericPrice);
-            formData.append('description', description.trim());
+        const formData = new FormData();
+        formData.append('name', name.trim());
+        formData.append('type', type.toLowerCase());
+        formData.append('location', location.trim());
+        formData.append('price_per_hour', numericPrice);
+        formData.append('description', description.trim());
+        formData.append('latitude', pinCoords.latitude);
+        formData.append('longitude', pinCoords.longitude);
 
-            formData.append('latitude', pinCoords.latitude);
-            formData.append('longitude', pinCoords.longitude);
-
-            if (imageUrl && !imageUrl.startsWith('http')) {
-                let filename = imageUrl.split('/').pop();
+        for (const uri of images) {
+            if (!uri.startsWith('http')) {
+                let filename = uri.split('/').pop();
                 let match = /\.(\w+)$/.exec(filename);
-                let imageType = match ? `image/${match[1]}` : `image`;
-                formData.append('image', { uri: imageUrl, name: filename, type: imageType });
-            } else if (imageUrl) {
-                formData.append('existing_image_url', imageUrl);
+                let imageType = match ? `image/${match[1]}` : 'image';
+                formData.append('images', { uri, name: filename, type: imageType });
             }
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'ngrok-skip-browser-warning': 'true'
-                },
-                body: formData
-            });
-
-            if (response.status === 401 || response.status === 403) {
-                setModalVisible(false);
-                await signOut();
-                return;
-            }
-
-            if (response.ok) {
-                setModalVisible(false);
-                resetForm();
-                fetchFacilities();
-            } else {
-                const data = await response.json();
-                Alert.alert(t('error_generic'), data.error || t('something_went_wrong'));
-            }
-        } catch (err) {
-            console.error(err);
-            Alert.alert(t('network_error'), t('check_connection'));
-        } finally {
-            setIsSubmitting(false);
         }
-    };
+        formData.append('existing_images', JSON.stringify(images.filter(uri => uri.startsWith('http'))));
+
+        const response = await fetch(url, {
+            method,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'ngrok-skip-browser-warning': 'true'
+            },
+            body: formData
+        });
+
+        if (response.status === 401 || response.status === 403) {
+            setModalVisible(false);
+            await signOut();
+            return;
+        }
+
+        if (response.ok) {
+            setModalVisible(false);
+            resetForm();
+            fetchFacilities();
+        } else {
+            const data = await response.json();
+            Alert.alert(t('error_generic'), data.error || t('something_went_wrong'));
+        }
+    } catch (err) {
+        console.error(err);
+        Alert.alert(t('network_error'), t('check_connection'));
+    } finally {
+        setIsSubmitting(false);
+    }
+};
 
     const handleDelete = (facility) => {
         Alert.alert(
@@ -414,16 +414,25 @@ export default function MyFacilitiesScreen() {
                                 <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
                                     <Text style={styles.label}>{t('facility_photo')}</Text>
-                                    <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
-                                        {imageUrl ? (
-                                            <Image source={{ uri: imageUrl }} style={styles.previewImage} />
-                                        ) : (
-                                            <View style={styles.imagePlaceholder}>
-                                                <Ionicons name="camera" size={32} color="#A0A0A0" />
-                                                <Text style={styles.imagePlaceholderText}>{t('upload_a_photo')}</Text>
-                                            </View>
-                                        )}
-                                    </TouchableOpacity>
+<ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 10 }}>
+    {images.map((uri, index) => (
+        <View key={index} style={{ position: 'relative', marginEnd: 10 }}>
+            <Image source={{ uri }} style={styles.previewImage} />
+            <TouchableOpacity
+                style={styles.removeImageBtn}
+                onPress={() => setImages(prev => prev.filter((_, i) => i !== index))}
+            >
+                <Ionicons name="close-circle" size={22} color="#DC2626" />
+            </TouchableOpacity>
+        </View>
+    ))}
+    <TouchableOpacity style={styles.imagePickerBtn} onPress={pickImage}>
+        <View style={styles.imagePlaceholder}>
+            <Ionicons name="camera" size={32} color="#A0A0A0" />
+            <Text style={styles.imagePlaceholderText}>{t('upload_a_photo')}</Text>
+        </View>
+    </TouchableOpacity>
+</ScrollView>
 
                                     <Text style={styles.label}>{t('facility_name')}</Text>
                                     <TextInput
@@ -548,10 +557,12 @@ const styles = StyleSheet.create({
     mapHintText: { color: '#555', marginBottom: 15, fontSize: 13 },
     saveButton: { backgroundColor: '#E8751A', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 30, borderWidth: 1, borderColor: '#E8751A', marginBottom: 20 },
     saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
-    imagePickerBtn: { width: '100%', height: 160, borderRadius: 10, overflow: 'hidden', backgroundColor: '#F9F6F0', borderWidth: 1, borderColor: '#D4D0C8', borderStyle: 'dashed' },
+    imagePickerBtn: { width: 140, height: 140, borderRadius: 10, overflow: 'hidden', backgroundColor: '#F9F6F0', borderWidth: 1, borderColor: '#D4D0C8', borderStyle: 'dashed' },
     previewImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     imagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     imagePlaceholderText: { marginTop: 8, color: '#A0A0A0', fontWeight: '600', fontSize: 14 },
     mapContainer: { flex: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#D4D0C8', marginBottom: 15 },
+    removeImageBtn: { position: 'absolute', top: 4, end: 4 },
+previewImage: { width: 140, height: 140, borderRadius: 10, resizeMode: 'cover' },
     myLocationBtn: { position: 'absolute', bottom: 20, end: 20, backgroundColor: '#FFFFFF', width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 3.84, elevation: 5, borderWidth: 1, borderColor: '#D4D0C8' }
 });
