@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, Modal, Animated, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, Image, Modal, Animated, ScrollView, Alert, ActivityIndicator, Dimensions } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../utils/LanguageContext';
 import { AuthContext } from '../utils/AuthContext';
 
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
 export default function FacilityDetailsScreen({ route, navigation }) {
     const { facility, booking } = route.params;
     const { t, language, formatNumber } = useContext(LanguageContext);
     const { signOut } = useContext(AuthContext);
+    
 
     const getDisplayStatus = (item) => {
         if (!item) return null;
@@ -489,7 +492,20 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 </View>
 
                 <View style={styles.imageContainer}>
-                    <Image source={fullFacility?.image_url ? { uri: fullFacility.image_url } : require('../assets/no-image-placeholder.png')} style={styles.facilityImage} />
+                    {fullFacility?.images?.length > 0 ? (
+                        <ScrollView
+                            horizontal
+                            pagingEnabled
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.carousel}
+                        >
+                            {fullFacility.images.map((url, index) => (
+                                <Image key={index} source={{ uri: url }} style={styles.carouselImage} />
+                            ))}
+                        </ScrollView>
+                    ) : (
+                        <Image source={require('../assets/no-image-placeholder.png')} style={styles.facilityImage} />
+                    )}
                 </View>
 
                 <ScrollView contentContainerStyle={styles.bottomGroup} showsVerticalScrollIndicator={false}>
@@ -765,6 +781,15 @@ const styles = StyleSheet.create({
         width: '100%', height: 260,
         borderRadius: 16,
         borderWidth: 1.5, borderColor: '#bbb9b3',
+        resizeMode: 'cover',
+    },
+    carousel: { borderRadius: 16, height: 260 },
+    carouselImage: {
+        width: SCREEN_WIDTH - 40,
+        height: 260,
+        borderRadius: 16,
+        borderWidth: 1.5,
+        borderColor: '#bbb9b3',
         resizeMode: 'cover',
     },
     bottomGroup: { paddingHorizontal: 20, paddingBottom: 40 },
