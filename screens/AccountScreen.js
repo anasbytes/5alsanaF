@@ -141,7 +141,10 @@ export default function AccountScreen() {
     const handleLogout = () => {
         Alert.alert(t('log_out') || 'Log Out', t('logout_confirm') || 'Are you sure you want to log out?', [
             { text: t('cancel') || 'Cancel', style: 'cancel' },
-            { text: t('log_out') || 'Log Out', style: 'destructive', onPress: () => signOut() }
+            { text: t('log_out') || 'Log Out', style: 'destructive', onPress: async () => {
+    await SecureStore.deleteItemAsync('recent_facilities');
+    signOut();
+}}
         ]);
     };
 

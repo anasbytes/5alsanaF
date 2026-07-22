@@ -146,7 +146,7 @@ export default function BookingsScreen({ navigation }) {
             name: item.facility_name,
             type: item.facility_type,
             location: item.facility_location,
-            image_url: item.image_url,
+            images: item.images,
             price_per_hour: item.price_per_hour
         };
 
