@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Share } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthContext } from '../utils/AuthContext';
@@ -29,6 +29,20 @@ export default function BookingsScreen({ navigation }) {
         const ampm = hour >= 12 ? 'PM' : 'AM';
         const formattedHour = hour % 12 || 12;
         return `${formattedHour}:${m} ${ampm}`;
+    };
+
+    const handleShare = async (item) => {
+        const start = formatTo12Hour(item.start_time);
+        const end = formatTo12Hour(item.end_time);
+        const locale = language === 'ar' ? 'ar-EG' : 'en-GB';
+        const date = new Date(item.booking_date).toLocaleDateString(locale, {
+            weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+        });
+        try {
+            await Share.share({
+                message: `📍 ${item.facility_name}\n📅 ${date}\n⏰ ${start} - ${end}\n📍 ${item.facility_location || ''}\n\n${t('share_booking_invite') || 'Join me for a game!'}`
+            });
+        } catch (e) { console.error(e); }
     };
 
     const fetchBookings = async () => {
@@ -212,15 +226,25 @@ export default function BookingsScreen({ navigation }) {
                     </TouchableOpacity>
                 )}
 
-                <TouchableOpacity
-                    style={styles.receiptButton}
-                    onPress={() => navigation.navigate('BookingReceipt', {
-                        booking: { ...item, derivedStatus: isCompleted ? 'completed' : item.status }
-                    })}
-                >
-                    <Ionicons name="receipt-outline" size={14} color="#E8751A" />
-                    <Text style={styles.receiptButtonText}>{t('view_receipt') || 'View Receipt'}</Text>
-                </TouchableOpacity>
+                <View style={styles.cardActions}>
+                    <TouchableOpacity
+                        style={styles.shareButton}
+                        onPress={() => handleShare(item)}
+                    >
+                        <Ionicons name="share-outline" size={14} color="#13294B" />
+                        <Text style={styles.shareButtonText}>{t('share') || 'Share'}</Text>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                        style={styles.receiptButton}
+                        onPress={() => navigation.navigate('BookingReceipt', {
+                            booking: { ...item, derivedStatus: isCompleted ? 'completed' : item.status }
+                        })}
+                    >
+                        <Ionicons name="receipt-outline" size={14} color="#E8751A" />
+                        <Text style={styles.receiptButtonText}>{t('view_receipt') || 'View Receipt'}</Text>
+                    </TouchableOpacity>
+                </View>
             </TouchableOpacity>
         );
     };
@@ -298,7 +322,10 @@ const styles = StyleSheet.create({
     timeValue: { fontSize: 14, fontWeight: '800', color: '#13294B' },
     emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 80 },
     emptyText: { fontSize: 16, fontWeight: '800', color: '#888888', marginTop: 15, textAlign: 'center' },
-    receiptButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E8751A', gap: 6 },
+    cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+    shareButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#13294B', gap: 6 },
+    shareButtonText: { fontSize: 13, color: '#13294B', fontWeight: '600' },
+    receiptButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E8751A', gap: 6 },
     receiptButtonText: { fontSize: 13, color: '#E8751A', fontWeight: '600' },
     ratePrompt: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 10, borderRadius: 8, backgroundColor: '#FEF3C7', gap: 8 },
     rateStars: { flexDirection: 'row', gap: 2 },
