@@ -106,6 +106,9 @@ const translations = {
         select_date: "Select Date",
         select_time: "Select Time",
 
+        join_waitlist: "Notify Me if This Slot Opens",
+        on_waitlist: "On Waitlist — Tap to Leave",
+
         // Map
         explore_map: "Explore Map",
         tap_to_view: "Tap to view",
@@ -432,6 +435,9 @@ const translations = {
         active: "نشط",
         completed: "مكتمل",
         confirmed: "مؤكد",
+
+        join_waitlist: "أخطرني إذا أصبح هذا الوقت متاحاً",
+        on_waitlist: "في قائمة الانتظار — اضغط للخروج",
 
         // Host Bookings & Dashboard
         my_facilities: "ملاعبي",

@@ -50,6 +50,8 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     const [isFavorited, setIsFavorited] = useState(false);
     const [favLoading, setFavLoading] = useState(false);
     const [reviews, setReviews] = useState({ reviews: [], average: 0, total: 0 });
+    const [onWaitlist, setOnWaitlist] = useState(false);
+    const [waitlistLoading, setWaitlistLoading] = useState(false);
 
     const fadeAnim = useRef(new Animated.Value(1)).current;
 
@@ -148,6 +150,55 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         }
     };
 
+    const checkWaitlistStatus = async (date, start, end) => {
+        if (!date || !start || !end) return;
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const params = new URLSearchParams({
+                facility_id: facility.id,
+                booking_date: date,
+                start_time: start,
+                end_time: end
+            });
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/waitlist/check?${params}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setOnWaitlist(data.on_waitlist);
+            }
+        } catch (e) { console.error(e); }
+    };
+
+    const toggleWaitlist = async () => {
+        if (waitlistLoading || !startTime || !endTime) return;
+        const start24 = formatTimeTo24Hour(startTime);
+        const end24 = formatTimeTo24Hour(endTime);
+        setWaitlistLoading(true);
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const method = onWaitlist ? 'DELETE' : 'POST';
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/waitlist`, {
+                method,
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': 'true'
+                },
+                body: JSON.stringify({
+                    facility_id: facility.id,
+                    booking_date: selectedDate,
+                    start_time: start24,
+                    end_time: end24
+                })
+            });
+            if (res.status === 401 || res.status === 403) { await signOut(); return; }
+            if (res.ok) setOnWaitlist(!onWaitlist);
+        } catch (e) { console.error(e); } finally {
+            setWaitlistLoading(false);
+        }
+    };
+
     const fetchFullFacility = async () => {
         try {
             const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/facilities/${facility.id}`);
@@ -229,6 +280,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         if (selectionMode === 'start') {
             setStartTime(time);
             setSelectionMode('end');
+            setOnWaitlist(false);
 
             const newStartIndex = timeSlots.indexOf(time);
             if (endTime && timeSlots.indexOf(endTime) <= newStartIndex) {
@@ -236,6 +288,9 @@ export default function FacilityDetailsScreen({ route, navigation }) {
             }
         } else {
             setEndTime(time);
+            const start24 = formatTimeTo24Hour(startTime);
+            const end24 = formatTimeTo24Hour(time);
+            checkWaitlistStatus(selectedDate, start24, end24);
         }
     };
 
@@ -657,6 +712,25 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                                         </TouchableOpacity>
                                     </View>
 
+                                    {startTime && endTime && (
+                                        <TouchableOpacity
+                                            style={[styles.waitlistButton, onWaitlist && styles.waitlistButtonActive]}
+                                            onPress={toggleWaitlist}
+                                            disabled={waitlistLoading}
+                                        >
+                                            <Ionicons
+                                                name={onWaitlist ? 'notifications' : 'notifications-outline'}
+                                                size={16}
+                                                color={onWaitlist ? '#FFFFFF' : '#13294B'}
+                                            />
+                                            <Text style={[styles.waitlistButtonText, onWaitlist && styles.waitlistButtonTextActive]}>
+                                                {onWaitlist
+                                                    ? (t('on_waitlist') || 'On Waitlist — Tap to Leave')
+                                                    : (t('join_waitlist') || 'Notify Me if This Slot Opens')}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+
                                 </View>
                             )}
                         </Animated.View>
@@ -752,4 +826,8 @@ const styles = StyleSheet.create({
     reviewUsername: { fontSize: 13, fontWeight: '700', color: '#13294B' },
     starsRow: { flexDirection: 'row', gap: 2 },
     reviewComment: { fontSize: 13, color: '#555', lineHeight: 18 },
+    waitlistButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 12, borderRadius: 10, borderWidth: 1.5, borderColor: '#13294B', gap: 8 },
+    waitlistButtonActive: { backgroundColor: '#13294B' },
+    waitlistButtonText: { fontSize: 13, fontWeight: '600', color: '#13294B' },
+    waitlistButtonTextActive: { color: '#FFFFFF' },
 });
