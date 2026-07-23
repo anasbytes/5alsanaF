@@ -184,6 +184,18 @@ const translations = {
         location_access_required_message: "Please allow location access to sort by distance.",
         km_short: "km",
 
+        // Onboarding
+onboarding_welcome: "Welcome to 5alsana",
+onboarding_welcome_sub: "Book sports & entertainment venues across Egypt in seconds.",
+onboarding_how_title: "How It Works",
+onboarding_how_sub: "Browse football courts, padel, basketball, PlayStation rooms and more. Players book, hosts manage.",
+onboarding_start_title: "Ready to Play?",
+onboarding_start_sub: "Create an account or log in to get started.",
+onboarding_next: "Next",
+onboarding_skip: "Skip",
+onboarding_login: "Log In",
+onboarding_signup: "Sign Up",
+
         // Account Screen
         profile: "Profile",
         hello: "Hello",
@@ -382,6 +394,18 @@ const translations = {
         drop_a_pin: "ثبّت الدبوس",
         tap_map_hint: "اضغط في أي مكان على الخريطة لتثبيت دبوس ملعبك.",
         confirm_location: "تأكيد الموقع",
+
+        // Onboarding
+onboarding_welcome: "أهلاً بك في خلصنا",
+onboarding_welcome_sub: "احجز ملاعب رياضية وترفيهية في مصر في ثوانٍ.",
+onboarding_how_title: "كيف يعمل التطبيق",
+onboarding_how_sub: "تصفح ملاعب كرة القدم، البادل، كرة السلة، غرف البلايستيشن والمزيد. اللاعبون يحجزون، والمضيفون يديرون.",
+onboarding_start_title: "مستعد للعب؟",
+onboarding_start_sub: "أنشئ حساباً أو سجّل دخولك للبدء.",
+onboarding_next: "التالي",
+onboarding_skip: "تخطي",
+onboarding_login: "تسجيل الدخول",
+onboarding_signup: "إنشاء حساب",
 
         // Search Screen
         closest_to_me: "الأقرب لي",

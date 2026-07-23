@@ -20,6 +20,7 @@ import FacilityDetailsScreen from './screens/FacilityDetailsScreen';
 import BookingReceiptScreen from './screens/BookingReceiptScreen';
 import HostDashboardScreen from './screens/HostDashboardScreen';
 import MapScreen from './screens/MapScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -137,7 +138,7 @@ function HostTabs() {
   );
 }
 
-function RootNavigator() {
+function RootNavigator({ onboardingComplete }) {
   const { userToken, userRole, isLoading } = React.useContext(AuthContext);
 
   if (isLoading) {
@@ -152,7 +153,10 @@ function RootNavigator() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {userToken == null ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            {!onboardingComplete && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
+            <Stack.Screen name="Login" component={LoginScreen} />
+          </>
         ) : (
           <>
             <Stack.Screen name="MainTabs" component={userRole === 'host' ? HostTabs : PlayerTabs} />
@@ -174,6 +178,7 @@ export default function App() {
     userToken: null,
     userRole: null,
   });
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
 
   useEffect(() => {
     async function prepare() {
@@ -181,6 +186,8 @@ export default function App() {
       try {
         const token = await SecureStore.getItemAsync('token');
         const role = await SecureStore.getItemAsync('role');
+        const onboarded = await SecureStore.getItemAsync('onboarding_complete');
+        setOnboardingComplete(!!onboarded);
         setAuthState({ isLoading: false, userToken: token, userRole: role });
       } catch (e) {
         console.warn(e);
@@ -218,7 +225,7 @@ export default function App() {
         <>
           <OfflineBanner />
           {/* Load the actual app in the background so it's ready when the animation finishes */}
-          <RootNavigator />
+          <RootNavigator onboardingComplete={onboardingComplete} />
 
           {/* Overlay the custom animation on top of everything until it completes */}
           {!animationComplete && (
