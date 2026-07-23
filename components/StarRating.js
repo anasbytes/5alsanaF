@@ -6,7 +6,7 @@ export default function StarRating({ rating, count, size = 12 }) {
     const avg = parseFloat(rating) || 0;
     const total = parseInt(count) || 0;
 
-    if (total === 0) return null;
+    if (total === 0) return <View style={{ height: 18 }} />;
 
     return (
         <View style={styles.container}>

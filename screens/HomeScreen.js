@@ -133,7 +133,7 @@ export default function HomeScreen({ navigation }) {
                 type: facility.type,
                 location: facility.location,
                 avg_rating: facility.avg_rating,
-review_count: facility.review_count
+                review_count: facility.review_count
             };
 
             // Add to front & limit to 5
@@ -315,40 +315,42 @@ review_count: facility.review_count
         </View>
     );
 
-    const renderFacility = ({ item }) => (
-        <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.7}
-            onPress={() => handleFacilityPress(item)}
-        >
-            <Image source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
+   const renderFacility = ({ item }) => (
+    <TouchableOpacity
+        style={styles.card}
+        activeOpacity={0.7}
+        onPress={() => handleFacilityPress(item)}
+    >
+        <Image source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
 
-            <View style={styles.cardContent}>
-                <View style={styles.cardHeader}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.cardPrice}>{formatNumber(item.price_per_hour)} <Text style={{ fontSize: 11 }}>{t('egp')}</Text></Text>
+        <View style={styles.cardContent}>
+            <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.cardPrice}>{formatNumber(item.price_per_hour)} <Text style={{ fontSize: 11 }}>{t('egp')}</Text></Text>
+            </View>
+            <View style={styles.cardBody}>
+                <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{t(item.type?.toLowerCase() || 'general') || item.type?.toUpperCase()}</Text>
                 </View>
-                <View style={styles.cardBody}>
-                    <View style={styles.badge}>
-                        <Text style={styles.badgeText}>{t(item.type?.toLowerCase() || 'general') || item.type?.toUpperCase()}</Text>
+                {item.distance !== undefined && item.distance !== Infinity && (
+                    <View style={styles.distanceBadge}>
+                        <Ionicons name="navigate" size={10} color="#1565C0" />
+                        <Text style={styles.distanceText}>
+                            {formatNumber(item.distance.toFixed(1))} {t('km_short')}
+                        </Text>
                     </View>
-                    {item.distance !== undefined && item.distance !== Infinity && (
-                        <View style={styles.distanceBadge}>
-                            <Ionicons name="navigate" size={10} color="#1565C0" />
-                            <Text style={styles.distanceText}>
-                                {formatNumber(item.distance.toFixed(1))} {t('km_short')}
-                            </Text>
-                        </View>
-                    )}
-                    <View style={styles.locationContainer}>
-                        <Ionicons name="location" size={14} color="#888" />
-                        <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
-                        <StarRating rating={item.avg_rating} count={item.review_count} />
-                    </View>
+                )}
+                <View style={styles.locationContainer}>
+                    <Ionicons name="location" size={14} color="#888" />
+                    <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
                 </View>
             </View>
-        </TouchableOpacity>
-    );
+        </View>
+        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+            <StarRating rating={item.avg_rating} count={item.review_count} />
+        </View>
+    </TouchableOpacity>
+);
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -472,7 +474,7 @@ const styles = StyleSheet.create({
     cardTitle: { fontSize: 18, fontWeight: '800', color: '#13294B', flex: 1, marginEnd: 10, letterSpacing: 0.2 },
     cardPrice: { fontSize: 16, fontWeight: '800', color: '#E8751A' },
     cardBody: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-    badge: { backgroundColor: '#E8751A', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, alignSelf: 'flex-start', justifyContent: 'center', marginBottom: 4 },
+    badge: { backgroundColor: '#13294B', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, alignSelf: 'flex-start', justifyContent: 'center', marginBottom: 4 },
     badgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textAlign: 'center' },
     distanceBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginStart: 8, marginBottom: 4 },
     distanceText: { fontSize: 10, fontWeight: '800', color: '#1565C0', marginStart: 3 },

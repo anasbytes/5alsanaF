@@ -246,9 +246,10 @@ export default function SearchScreen({ navigation }) {
             activeOpacity={0.7}
             onPress={() => navigation.navigate('FacilityDetails', { facility: item })}
         >
-            {item.images?.length > 0 && (
-                <Image source={{ uri: item.images[0] }} style={styles.cardImage} />
-            )}
+            <Image
+                source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')}
+                style={styles.cardImage}
+            />
             <View style={{ paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 }}>
                 <View style={styles.cardHeader}>
                     <View style={styles.titleContainer}>
@@ -275,12 +276,14 @@ export default function SearchScreen({ navigation }) {
                     <View style={styles.locationContainer}>
                         <Ionicons name="location" size={14} color="#888" />
                         <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
-                        <StarRating rating={item.avg_rating} count={item.review_count} />
                     </View>
                 </View>
-    </View>
+            </View>
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                <StarRating rating={item.avg_rating} count={item.review_count} />
+            </View>
         </TouchableOpacity>
-        
+
     );
 
     return (
