@@ -5,6 +5,7 @@ import { Calendar } from 'react-native-calendars';
 import { Ionicons } from '@expo/vector-icons';
 import { LanguageContext } from '../utils/LanguageContext';
 import { AuthContext } from '../utils/AuthContext';
+import StarRating from '../components/StarRating';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -13,7 +14,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     const { t, language, formatNumber } = useContext(LanguageContext);
     const { signOut } = useContext(AuthContext);
     const [carouselIndex, setCarouselIndex] = useState(0);
-    
+
 
     const getDisplayStatus = (item) => {
         if (!item) return null;
@@ -490,38 +491,39 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                             {fullFacility?.type ? (t(fullFacility.type.toLowerCase()) || fullFacility.type.toUpperCase()) : (t('general') || 'GENERAL')}
                         </Text>
                     </View>
+                    <StarRating rating={fullFacility?.avg_rating} count={fullFacility?.review_count} size={14} />
                 </View>
 
                 <View style={styles.imageContainer}>
-    {fullFacility?.images?.length > 0 ? (
-        <View>
-            <ScrollView
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                style={styles.carousel}
-                onScroll={(e) => {
-                    const index = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40));
-                    setCarouselIndex(index);
-                }}
-                scrollEventThrottle={16}
-            >
-                {fullFacility.images.map((url, index) => (
-                    <Image key={index} source={{ uri: url }} style={styles.carouselImage} />
-                ))}
-            </ScrollView>
-            {fullFacility.images.length > 1 && (
-                <View style={styles.dotsContainer}>
-                    {fullFacility.images.map((_, i) => (
-                        <View key={i} style={[styles.dot, carouselIndex === i && styles.dotActive]} />
-                    ))}
+                    {fullFacility?.images?.length > 0 ? (
+                        <View>
+                            <ScrollView
+                                horizontal
+                                pagingEnabled
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.carousel}
+                                onScroll={(e) => {
+                                    const index = Math.round(e.nativeEvent.contentOffset.x / (SCREEN_WIDTH - 40));
+                                    setCarouselIndex(index);
+                                }}
+                                scrollEventThrottle={16}
+                            >
+                                {fullFacility.images.map((url, index) => (
+                                    <Image key={index} source={{ uri: url }} style={styles.carouselImage} />
+                                ))}
+                            </ScrollView>
+                            {fullFacility.images.length > 1 && (
+                                <View style={styles.dotsContainer}>
+                                    {fullFacility.images.map((_, i) => (
+                                        <View key={i} style={[styles.dot, carouselIndex === i && styles.dotActive]} />
+                                    ))}
+                                </View>
+                            )}
+                        </View>
+                    ) : (
+                        <Image source={require('../assets/no-image-placeholder.png')} style={styles.facilityImage} />
+                    )}
                 </View>
-            )}
-        </View>
-    ) : (
-        <Image source={require('../assets/no-image-placeholder.png')} style={styles.facilityImage} />
-    )}
-</View>
 
                 <ScrollView contentContainerStyle={styles.bottomGroup} showsVerticalScrollIndicator={false}>
                     <View style={styles.infoBox}>
@@ -871,6 +873,6 @@ const styles = StyleSheet.create({
     waitlistButtonText: { fontSize: 13, fontWeight: '600', color: '#13294B' },
     waitlistButtonTextActive: { color: '#FFFFFF' },
     dotsContainer: { flexDirection: 'row', justifyContent: 'center', marginTop: 8, gap: 6 },
-dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#C0BAB0' },
-dotActive: { backgroundColor: '#13294B', width: 18 },
+    dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#C0BAB0' },
+    dotActive: { backgroundColor: '#13294B', width: 18 },
 });

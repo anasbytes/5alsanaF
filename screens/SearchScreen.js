@@ -7,6 +7,7 @@ import { AuthContext } from '../utils/AuthContext';
 import { LanguageContext } from '../utils/LanguageContext';
 import NetInfo from '@react-native-community/netinfo';
 import MapView, { Marker, Callout } from 'react-native-maps';
+import StarRating from '../components/StarRating';
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -274,6 +275,7 @@ export default function SearchScreen({ navigation }) {
                     <View style={styles.locationContainer}>
                         <Ionicons name="location" size={14} color="#888" />
                         <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
+                        <StarRating rating={item.avg_rating} count={item.review_count} />
                     </View>
                 </View>
     </View>

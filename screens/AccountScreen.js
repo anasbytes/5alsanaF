@@ -201,7 +201,7 @@ export default function AccountScreen() {
 if (status !== 'granted') {
     Alert.alert(t('permission_denied'), t('need_location_access'));
     return;
-}
+}StarRating.js
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,

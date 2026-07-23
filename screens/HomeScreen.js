@@ -7,6 +7,7 @@ import { AuthContext } from '../utils/AuthContext';
 import { LanguageContext } from '../utils/LanguageContext';
 import NetInfo from '@react-native-community/netinfo';
 import { useFocusEffect } from '@react-navigation/native';
+import StarRating from '../components/StarRating';
 
 const CATEGORIES = [
     { value: 'All', labelKey: 'type_all' },
@@ -130,7 +131,9 @@ export default function HomeScreen({ navigation }) {
                 price_per_hour: facility.price_per_hour,
                 images: facility.images,
                 type: facility.type,
-                location: facility.location
+                location: facility.location,
+                avg_rating: facility.avg_rating,
+review_count: facility.review_count
             };
 
             // Add to front & limit to 5
@@ -340,6 +343,7 @@ export default function HomeScreen({ navigation }) {
                     <View style={styles.locationContainer}>
                         <Ionicons name="location" size={14} color="#888" />
                         <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
+                        <StarRating rating={item.avg_rating} count={item.review_count} />
                     </View>
                 </View>
             </View>
