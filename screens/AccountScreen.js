@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ActivityIndicator, Alert, ScrollView, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity, TextInput, ActivityIndicator, Alert, ScrollView, RefreshControl, Image } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import NetInfo from '@react-native-community/netinfo';
 import { AuthContext } from '../utils/AuthContext';
 import { LanguageContext } from '../utils/LanguageContext';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function AccountScreen() {
     const { signOut } = useContext(AuthContext);
@@ -192,6 +193,46 @@ export default function AccountScreen() {
 
     if (loading) return <ActivityIndicator size="large" color="#E8751A" style={{ flex: 1, backgroundColor: '#F9F6F0' }} />;
 
+    const pickAvatar = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaType.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+    });
+
+    if (!result.canceled) {
+        const uri = result.assets[0].uri;
+        const filename = uri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const imageType = match ? `image/${match[1]}` : 'image';
+
+        const formData = new FormData();
+        formData.append('avatar', { uri, name: filename, type: imageType });
+
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/users/me`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true',
+                },
+                body: formData,
+            });
+            if (res.ok) {
+                const updated = await res.json();
+                setUser(updated);
+            } else {
+                Alert.alert(t('error_generic'), t('something_went_wrong'));
+            }
+        } catch (err) {
+            console.error(err);
+            Alert.alert(t('network_error'), t('check_connection'));
+        }
+    }
+};
+
     return (
         <SafeAreaView style={styles.safeArea}>
             <ScrollView 
@@ -203,18 +244,27 @@ export default function AccountScreen() {
                 <Text style={styles.headerTitle}>{t('profile') || 'Profile'}</Text>
 
                 <View style={styles.avatarContainer}>
-                    <View style={styles.avatarCircle}>
-                        <Text style={styles.avatarText}>
-                            {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
-                        </Text>
-                    </View>
-                    <Text style={styles.welcomeText}>
-                        {t('hello') || 'Hello'}, {user?.username || 'User'}
-                    </Text>
-                    <Text style={styles.roleBadge}>
-                        {user?.role ? (t(user.role.toLowerCase()) || user.role.toUpperCase()) : 'PLAYER'}
-                    </Text>
-                </View>
+    <TouchableOpacity onPress={pickAvatar} style={styles.avatarWrapper}>
+        {user?.avatar_url ? (
+            <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+        ) : (
+            <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>
+                    {user?.username ? user.username.charAt(0).toUpperCase() : '?'}
+                </Text>
+            </View>
+        )}
+        <View style={styles.avatarCameraIcon}>
+            <Ionicons name="camera" size={14} color="#fff" />
+        </View>
+    </TouchableOpacity>
+    <Text style={styles.welcomeText}>
+        {t('hello') || 'Hello'}, {user?.username || 'User'}
+    </Text>
+    <Text style={styles.roleBadge}>
+        {user?.role ? (t(user.role.toLowerCase()) || user.role.toUpperCase()) : 'PLAYER'}
+    </Text>
+</View>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>{t('account_details') || 'Account Details'}</Text>
@@ -425,4 +475,12 @@ const styles = StyleSheet.create({
         fontSize: 15, 
         fontWeight: '700' 
     },
+    avatarWrapper: { position: 'relative', marginBottom: 12 },
+avatarImage: { width: 90, height: 90, borderRadius: 45, resizeMode: 'cover' },
+avatarCameraIcon: {
+    position: 'absolute', bottom: 0, end: 0,
+    backgroundColor: '#E8751A', borderRadius: 12,
+    width: 24, height: 24, justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: '#F9F6F0',
+},
 });
