@@ -245,6 +245,10 @@ onboarding_signup: "Sign Up",
         update_failed: "Failed to update booking status.",
         accept: "Accept",
         decline: "Decline",
+
+        empty_home_title: "No venues near you yet",
+empty_home_sub: "5alsana connects you with sports & entertainment venues across Egypt. Try changing your location or check back soon.",
+empty_category_sub: "No venues found for this category. Try another one.",
     },
     ar: {
         // Nav
@@ -400,6 +404,10 @@ onboarding_signup: "Sign Up",
 
         list_view: "قائمة",
 map_view_toggle: "خريطة",
+
+empty_home_title: "لا توجد ملاعب بالقرب منك بعد",
+empty_home_sub: "خلصنا يربطك بملاعب رياضية وترفيهية في مصر. جرّب تغيير موقعك أو عُد لاحقاً.",
+empty_category_sub: "لا توجد ملاعب لهذه الفئة. جرّب فئة أخرى.",
 
         // Onboarding
 onboarding_welcome: "أهلاً بك في خلصنا",

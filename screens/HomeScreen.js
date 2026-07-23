@@ -402,13 +402,20 @@ export default function HomeScreen({ navigation }) {
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={renderFooter}
                 ListEmptyComponent={
-                    !loading && (
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="business-outline" size={50} color="#D0D0D0" />
-                            <Text style={styles.emptyText}>{t('no_facilities')}</Text>
-                        </View>
-                    )
-                }
+    !loading && (
+        <View style={styles.emptyContainer}>
+            <Ionicons name="business-outline" size={60} color="#D0D0D0" />
+            <Text style={styles.emptyTitle}>{t('empty_home_title')}</Text>
+            <Text style={styles.emptyText}>
+                {activeCategory !== 'All' ? t('empty_category_sub') : t('empty_home_sub')}
+            </Text>
+            <TouchableOpacity style={styles.emptyBtn} onPress={() => setLocationModalVisible(true)}>
+                <Ionicons name="location-outline" size={16} color="#fff" />
+                <Text style={styles.emptyBtnText}>{t('change_location')}</Text>
+            </TouchableOpacity>
+        </View>
+    )
+}
             />
 
             <Modal visible={locationModalVisible} animationType="fade" transparent={true} onRequestClose={() => setLocationModalVisible(false)}>
@@ -493,5 +500,10 @@ const styles = StyleSheet.create({
     searchLocationBtnText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
     useCurrentBtn: { flexDirection: 'row', backgroundColor: '#F0F4F8', borderWidth: 1, borderColor: '#D4D0C8', borderRadius: 10, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
     useCurrentBtnText: { color: '#13294B', fontWeight: 'bold', fontSize: 14 },
-    skeletonBlock: { backgroundColor: '#D4D0C8' }
+    skeletonBlock: { backgroundColor: '#D4D0C8' },
+    emptyContainer: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30 },
+emptyTitle: { fontSize: 20, fontWeight: '800', color: '#13294B', marginTop: 20, textAlign: 'center', marginBottom: 10 },
+emptyText: { textAlign: 'center', fontSize: 14, color: '#888888', fontWeight: '500', lineHeight: 22, marginBottom: 24 },
+emptyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8751A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, gap: 8 },
+emptyBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });
