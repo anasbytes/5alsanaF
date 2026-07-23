@@ -37,13 +37,7 @@ export default function MyFacilitiesScreen() {
     const [roomPrice, setRoomPrice] = useState('');
     const [editingRoom, setEditingRoom] = useState(null);
     const [roomSubmitting, setRoomSubmitting] = useState(false);
-    const [roomModalVisible, setRoomModalVisible] = useState(false);
-    const [managingFacility, setManagingFacility] = useState(null);
-    const [rooms, setRooms] = useState([]);
-    const [roomName, setRoomName] = useState('');
-    const [roomPrice, setRoomPrice] = useState('');
-    const [editingRoom, setEditingRoom] = useState(null);
-    const [roomSubmitting, setRoomSubmitting] = useState(false);
+
 
     const [name, setName] = useState('');
     const [type, setType] = useState('Football');
@@ -361,137 +355,19 @@ export default function MyFacilitiesScreen() {
         ]);
     };
 
-    const fetchRooms = async (facilityId) => {
-        try {
-            const res = await fetch(`${BACKEND_URL}/rooms/facility/${facilityId}`, {
-                headers: { 'ngrok-skip-browser-warning': 'true' }
-            });
-            if (res.ok) setRooms(await res.json());
-        } catch (e) { console.error(e); }
-    };
 
-    const openRoomModal = (facility) => {
-        setManagingFacility(facility);
-        setRooms([]);
-        setRoomName(''); setRoomPrice(''); setEditingRoom(null);
-        fetchRooms(facility.id);
-        setRoomModalVisible(true);
-    };
 
-    const handleSaveRoom = async () => {
-        if (!roomName.trim() || !roomPrice.trim()) return;
-        const numericPrice = parseFloat(roomPrice.replace(/,/g, '').trim());
-        if (isNaN(numericPrice) || numericPrice < 0) {
-            Alert.alert(t('invalid_price'), t('invalid_price_message'));
-            return;
-        }
-        setRoomSubmitting(true);
-        try {
-            const token = await SecureStore.getItemAsync('token');
-            const method = editingRoom ? 'PUT' : 'POST';
-            const url = editingRoom ? `${BACKEND_URL}/rooms/${editingRoom.id}` : `${BACKEND_URL}/rooms`;
-            const body = editingRoom
-                ? { name: roomName.trim(), price_per_hour: numericPrice }
-                : { facility_id: managingFacility.id, name: roomName.trim(), price_per_hour: numericPrice };
-            const res = await fetch(url, {
-                method,
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
-                setRoomName(''); setRoomPrice(''); setEditingRoom(null);
-                fetchRooms(managingFacility.id);
-            } else {
-                const data = await res.json();
-                Alert.alert(t('error_generic'), data.error || t('something_went_wrong'));
-            }
-        } catch (e) { console.error(e); }
-        finally { setRoomSubmitting(false); }
-    };
+   
 
-    const handleDeleteRoom = (room) => {
-        Alert.alert(t('delete') || 'Delete', `Delete room "${room.name}"?`, [
-            { text: t('cancel'), style: 'cancel' },
-            {
-                text: t('delete'), style: 'destructive', onPress: async () => {
-                    try {
-                        const token = await SecureStore.getItemAsync('token');
-                        await fetch(`${BACKEND_URL}/rooms/${room.id}`, {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
-                        });
-                        fetchRooms(managingFacility.id);
-                    } catch (e) { console.error(e); }
-                }
-            }
-        ]);
-    };
 
-    const fetchRooms = async (facilityId) => {
-        try {
-            const res = await fetch(`${BACKEND_URL}/rooms/facility/${facilityId}`, {
-                headers: { 'ngrok-skip-browser-warning': 'true' }
-            });
-            if (res.ok) setRooms(await res.json());
-        } catch (e) { console.error(e); }
-    };
 
-    const openRoomModal = (facility) => {
-        setManagingFacility(facility);
-        setRooms([]);
-        setRoomName(''); setRoomPrice(''); setEditingRoom(null);
-        fetchRooms(facility.id);
-        setRoomModalVisible(true);
-    };
+    
 
-    const handleSaveRoom = async () => {
-        if (!roomName.trim() || !roomPrice.trim()) return;
-        const numericPrice = parseFloat(roomPrice.replace(/,/g, '').trim());
-        if (isNaN(numericPrice) || numericPrice < 0) {
-            Alert.alert(t('invalid_price'), t('invalid_price_message'));
-            return;
-        }
-        setRoomSubmitting(true);
-        try {
-            const token = await SecureStore.getItemAsync('token');
-            const method = editingRoom ? 'PUT' : 'POST';
-            const url = editingRoom ? `${BACKEND_URL}/rooms/${editingRoom.id}` : `${BACKEND_URL}/rooms`;
-            const body = editingRoom
-                ? { name: roomName.trim(), price_per_hour: numericPrice }
-                : { facility_id: managingFacility.id, name: roomName.trim(), price_per_hour: numericPrice };
-            const res = await fetch(url, {
-                method,
-                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
-                body: JSON.stringify(body)
-            });
-            if (res.ok) {
-                setRoomName(''); setRoomPrice(''); setEditingRoom(null);
-                fetchRooms(managingFacility.id);
-            } else {
-                const data = await res.json();
-                Alert.alert(t('error_generic'), data.error || t('something_went_wrong'));
-            }
-        } catch (e) { console.error(e); }
-        finally { setRoomSubmitting(false); }
-    };
+    
 
-    const handleDeleteRoom = (room) => {
-        Alert.alert(t('delete') || 'Delete', `Delete room "${room.name}"?`, [
-            { text: t('cancel'), style: 'cancel' },
-            {
-                text: t('delete'), style: 'destructive', onPress: async () => {
-                    try {
-                        const token = await SecureStore.getItemAsync('token');
-                        await fetch(`${BACKEND_URL}/rooms/${room.id}`, {
-                            method: 'DELETE',
-                            headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
-                        });
-                        fetchRooms(managingFacility.id);
-                    } catch (e) { console.error(e); }
-                }
-            }
-        ]);
-    };
+   
+
+    
 
     const getTypeIcon = (facilityType) => {
         switch (facilityType.toLowerCase()) {
