@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useContext, useRef } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, RefreshControl, Animated } from 'react-native';
+import { View, Text, StyleSheet, SafeAreaView, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Alert, RefreshControl, Animated, Image } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { AuthContext } from '../utils/AuthContext';
 import { LanguageContext } from '../utils/LanguageContext';
 import NetInfo from '@react-native-community/netinfo';
+import MapView, { Marker, Callout } from 'react-native-maps';
+import { Image } from 'react-native';
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
     if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -87,6 +89,7 @@ export default function SearchScreen({ navigation }) {
         price_desc: t('highest_price'),
         favorites: t('favorites') || 'Favorites',
     };
+    const [viewMode, setViewMode] = useState('list');
 
     useEffect(() => {
         fetchUserLocation();
@@ -338,36 +341,82 @@ export default function SearchScreen({ navigation }) {
                 ))}
             </View>
 
+            <View style={styles.viewToggleContainer}>
+    <TouchableOpacity
+        style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleActive]}
+        onPress={() => setViewMode('list')}
+    >
+        <Ionicons name="list" size={16} color={viewMode === 'list' ? '#fff' : '#888'} />
+        <Text style={[styles.viewToggleText, viewMode === 'list' && styles.viewToggleTextActive]}>{t('list_view')}</Text>
+    </TouchableOpacity>
+    <TouchableOpacity
+        style={[styles.viewToggleBtn, viewMode === 'map' && styles.viewToggleActive]}
+        onPress={() => setViewMode('map')}
+    >
+        <Ionicons name="map" size={16} color={viewMode === 'map' ? '#fff' : '#888'} />
+        <Text style={[styles.viewToggleText, viewMode === 'map' && styles.viewToggleTextActive]}>{t('map_view_toggle')}</Text>
+    </TouchableOpacity>
+</View>
+
             {loading ? (
-                // Render 6 skeleton cards while loading
-                <View style={styles.listContainer}>
-                    {[...Array(6)].map((_, index) => (
-                        <SkeletonCard key={index} />
-                    ))}
-                </View>
-            ) : (
-                <FlatList
-                    data={filteredFacilities}
-                    keyExtractor={(item) => item.id.toString()}
-                    renderItem={renderFacility}
-                    style={{ flex: 1 }}
-                    contentContainerStyle={styles.listContainer}
-                    showsVerticalScrollIndicator={false}
-                    keyboardShouldPersistTaps="handled"
-                    keyboardDismissMode="on-drag"
-                    onEndReached={loadMoreFacilities}
-                    onEndReachedThreshold={0.5}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
-                    ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#E8751A" style={{ marginVertical: 20 }} /> : null}
-                    ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <Ionicons name="search-outline" size={50} color="#D0D0D0" />
-                            <Text style={styles.emptyText}>{t('no_match_search')}</Text>
-                        </View>
-                    }
-                />
-            )}
-        </SafeAreaView>
+    <View style={styles.listContainer}>
+        {[...Array(6)].map((_, index) => (
+            <SkeletonCard key={index} />
+        ))}
+    </View>
+) : viewMode === 'list' ? (
+    <FlatList
+        data={filteredFacilities}
+        keyExtractor={(item) => item.id.toString()}
+        renderItem={renderFacility}
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        onEndReached={loadMoreFacilities}
+        onEndReachedThreshold={0.5}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E8751A" />}
+        ListFooterComponent={loadingMore ? <ActivityIndicator size="small" color="#E8751A" style={{ marginVertical: 20 }} /> : null}
+        ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+                <Ionicons name="search-outline" size={50} color="#D0D0D0" />
+                <Text style={styles.emptyText}>{t('no_match_search')}</Text>
+            </View>
+        }
+    />
+) : (
+    <MapView
+        style={{ flex: 1 }}
+        initialRegion={{
+            latitude: userCoords?.latitude || 30.0444,
+            longitude: userCoords?.longitude || 31.2357,
+            latitudeDelta: 0.1,
+            longitudeDelta: 0.1,
+        }}
+        showsUserLocation={true}
+    >
+        {filteredFacilities.filter(f => f.latitude && f.longitude).map(item => (
+            <Marker
+                key={item.id}
+                coordinate={{ latitude: parseFloat(item.latitude), longitude: parseFloat(item.longitude) }}
+                pinColor="#E8751A"
+            >
+                <Callout onPress={() => navigation.navigate('FacilityDetails', { facility: item })}>
+                    <View style={styles.callout}>
+                        {item.images?.length > 0 && (
+                            <Image source={{ uri: item.images[0] }} style={styles.calloutImage} />
+                        )}
+                        <Text style={styles.calloutTitle}>{item.name}</Text>
+                        <Text style={styles.calloutPrice}>{item.price_per_hour} {t('egp')}/hr</Text>
+                        <Text style={styles.calloutTap}>Tap to view</Text>
+                    </View>
+                </Callout>
+            </Marker>
+        ))}
+    </MapView>
+)}
+    </SafeAreaView>
     );
 }
 
@@ -419,5 +468,30 @@ const styles = StyleSheet.create({
     cardLocation: { fontSize: 13, color: '#555555', marginStart: 4, flexShrink: 1, fontWeight: '600' },
     emptyContainer: { alignItems: 'center', marginTop: 60 },
     emptyText: { textAlign: 'center', marginTop: 15, fontSize: 15, color: '#888888', fontWeight: '600' },
-    skeletonBlock: { backgroundColor: '#D4D0C8' } // Added style for the skeleton animation
+    skeletonBlock: { backgroundColor: '#D4D0C8' }, // Added style for the skeleton animation
+    viewToggleContainer: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: '#EEEBE4',
+    borderRadius: 10,
+    padding: 3,
+},
+viewToggleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 8,
+    gap: 6,
+},
+viewToggleActive: { backgroundColor: '#13294B' },
+viewToggleText: { fontSize: 13, fontWeight: '700', color: '#888' },
+viewToggleTextActive: { color: '#fff' },
+callout: { width: 180, padding: 8 },
+calloutImage: { width: '100%', height: 100, borderRadius: 8, marginBottom: 6, resizeMode: 'cover' },
+calloutTitle: { fontSize: 14, fontWeight: '700', color: '#13294B', marginBottom: 2 },
+calloutPrice: { fontSize: 12, color: '#E8751A', fontWeight: '600' },
+calloutTap: { fontSize: 11, color: '#888', marginTop: 4 },
 });

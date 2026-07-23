@@ -174,6 +174,9 @@ const translations = {
         tap_map_hint: "Tap anywhere on the map to place your facility's pin.",
         confirm_location: "Confirm Location",
 
+        list_view: "List",
+map_view_toggle: "Map",
+
         // Search Screen
         closest_to_me: "Closest to Me",
         sort_default: "Default",
@@ -394,6 +397,9 @@ onboarding_signup: "Sign Up",
         drop_a_pin: "ثبّت الدبوس",
         tap_map_hint: "اضغط في أي مكان على الخريطة لتثبيت دبوس ملعبك.",
         confirm_location: "تأكيد الموقع",
+
+        list_view: "قائمة",
+map_view_toggle: "خريطة",
 
         // Onboarding
 onboarding_welcome: "أهلاً بك في خلصنا",
