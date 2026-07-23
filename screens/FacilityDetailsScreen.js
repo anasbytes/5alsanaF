@@ -47,6 +47,8 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [bookingStep, setBookingStep] = useState('calendar');
     const [selectedDate, setSelectedDate] = useState('');
+    const [rooms, setRooms] = useState([]);
+    const [selectedRoom, setSelectedRoom] = useState(null);
 
     const [startTime, setStartTime] = useState(null);
     const [endTime, setEndTime] = useState(null);
@@ -104,6 +106,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         fetchFullFacility();
         checkFavoriteStatus();
         fetchReviews();
+        fetchRooms();
         if (!booking) {
             if (facility?.id) fetchFacilityAvailability();
         }
@@ -214,10 +217,13 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         } catch (e) { console.error(e); }
     };
 
-    const fetchFacilityAvailability = async () => {
+    const fetchFacilityAvailability = async (roomId = null) => {
         try {
             const token = await SecureStore.getItemAsync('token');
-            const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/facility/${facility.id}`, {
+            const url = roomId
+                ? `${process.env.EXPO_PUBLIC_API_URL}/bookings/facility/${facility.id}?room_id=${roomId}`
+                : `${process.env.EXPO_PUBLIC_API_URL}/bookings/facility/${facility.id}`;
+            const response = await fetch(url, {
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${token}`,
@@ -261,6 +267,20 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         }
     };
 
+
+
+    const fetchRooms = async () => {
+        try {
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/rooms/facility/${facility.id}`, {
+                headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) {
+                const data = await res.json();
+                setRooms(data);
+            }
+        } catch (e) { console.error(e); }
+    };
+
     const triggerFadeTransition = (nextStep) => {
         Animated.timing(fadeAnim, {
             toValue: 0,
@@ -272,6 +292,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 setStartTime(null);
                 setEndTime(null);
                 setSelectionMode('start');
+                setSelectedRoom(null);
             }
             Animated.timing(fadeAnim, {
                 toValue: 1,
@@ -372,6 +393,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 },
                 body: JSON.stringify({
                     facility_id: facility.id,
+                    room_id: selectedRoom?.id,
                     booking_date: selectedDate,
                     start_time: dbStartTime,
                     end_time: dbEndTime,
@@ -533,7 +555,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                         </View>
                         <View style={styles.infoRow}>
                             <Ionicons name="cash-outline" size={18} color="#888" />
-                            <Text style={styles.infoText}><Text style={styles.priceHighlight}>{fullFacility?.price_per_hour || '--'}</Text> {t('egp_hr') || 'EGP / hr'}</Text>
+                            <Text style={styles.infoText}><Text style={styles.priceHighlight}>{selectedRoom ? selectedRoom.price_per_hour : (fullFacility?.price_per_hour || '--')}</Text> {t('egp_hr') || 'EGP / hr'}</Text>
                         </View>
 
                         {fullFacility?.description ? (
@@ -645,7 +667,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
 
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>
-                                {bookingStep === 'calendar' ? (t('select_date') || 'Select Date') : (t('select_time') || 'Select Time')}
+                                {bookingStep === 'calendar' ? (t('select_date') || 'Select Date') : bookingStep === 'room' ? (t('select_room') || 'Select Room') : (t('select_time') || 'Select Time')}
                             </Text>
                             <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.closeBtn}>
                                 <Ionicons name="close" size={24} color="#888" />
@@ -653,11 +675,31 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                         </View>
 
                         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
-                            {bookingStep === 'calendar' ? (
+                            {bookingStep === 'room' ? (
+                                <ScrollView contentContainerStyle={{ paddingTop: 10, paddingBottom: 20 }}>
+                                    {rooms.map(room => (
+                                        <TouchableOpacity
+                                            key={room.id}
+                                            style={[styles.gridSlot, { marginBottom: 12, paddingHorizontal: 16, alignItems: 'flex-start' }, selectedRoom?.id === room.id && styles.gridSlotSelected]}
+                                            onPress={() => {
+                                                setSelectedRoom(room);
+                                                fetchFacilityAvailability(room.id);
+                                                triggerFadeTransition('time');
+                                            }}
+                                        >
+                                            <Text style={[styles.gridSlotText, selectedRoom?.id === room.id && styles.gridSlotTextSelected]}>{room.name}</Text>
+                                            <Text style={[{ fontSize: 13, color: '#888', marginTop: 2 }, selectedRoom?.id === room.id && { color: '#ccc' }]}>{room.price_per_hour} {t('egp_hr') || 'EGP / hr'}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                    <TouchableOpacity style={styles.backToCalendarButtonSmall} onPress={() => triggerFadeTransition('calendar')}>
+                                        <Text style={styles.backToCalendarTextSmall}>{t('back') || 'Back'}</Text>
+                                    </TouchableOpacity>
+                                </ScrollView>
+                            ) : bookingStep === 'calendar' ? (
                                 <Calendar
                                     onDayPress={(day) => {
                                         setSelectedDate(day.dateString);
-                                        setTimeout(() => { triggerFadeTransition('time'); }, 400);
+                                        setTimeout(() => { triggerFadeTransition(rooms.length > 0 ? 'room' : 'time'); }, 400);
                                     }}
                                     minDate={todayStr}
                                     markedDates={{
