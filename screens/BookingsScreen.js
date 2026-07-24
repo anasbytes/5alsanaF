@@ -14,6 +14,7 @@ export default function BookingsScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [reviewedBookingIds, setReviewedBookingIds] = useState(new Set());
+    const [cancellingId, setCancellingId] = useState(null);
 
     useFocusEffect(
         useCallback(() => {
@@ -92,6 +93,33 @@ export default function BookingsScreen({ navigation }) {
         setRefreshing(true);
         fetchBookings();
         fetchReviewedIds();
+    };
+
+    const handleCancel = (item) => {
+        Alert.alert(
+            t('cancel_request') || 'Cancel Request',
+            `${t('cancel_confirm_msg') || 'Cancel your booking for'} ${item.facility_name}?`,
+            [
+                { text: t('no_keep_it') || 'No, keep it', style: 'cancel' },
+                {
+                    text: t('yes_cancel') || 'Yes, cancel it', style: 'destructive',
+                    onPress: async () => {
+                        setCancellingId(item.id);
+                        try {
+                            const token = await SecureStore.getItemAsync('token');
+                            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/${item.id}/cancel`, {
+                                method: 'PUT',
+                                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+                            });
+                            if (res.status === 401 || res.status === 403) { await signOut(); return; }
+                            if (res.ok) fetchBookings();
+                            else Alert.alert(t('error') || 'Error', t('cancel_failed') || 'Failed to cancel.');
+                        } catch (e) { console.error(e); }
+                        finally { setCancellingId(null); }
+                    }
+                }
+            ]
+        );
     };
 
     const fetchReviewedIds = async () => {
@@ -208,6 +236,19 @@ export default function BookingsScreen({ navigation }) {
                         </View>
                     </View>
                 </View>
+
+                {(statusConfig.rawText === 'PENDING' || statusConfig.rawText === 'CONFIRMED') && (
+                    <TouchableOpacity
+                        style={styles.cancelButton}
+                        onPress={() => handleCancel(item)}
+                        disabled={cancellingId === item.id}
+                    >
+                        {cancellingId === item.id
+                            ? <ActivityIndicator size="small" color="#D32F2F" />
+                            : <Text style={styles.cancelButtonText}>{t('cancel_request') || 'Cancel Request'}</Text>
+                        }
+                    </TouchableOpacity>
+                )}
 
                 {isCompleted && !reviewedBookingIds.has(item.id) && (
                     <TouchableOpacity
@@ -349,6 +390,8 @@ const styles = StyleSheet.create({
     ratePrompt: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 10, borderRadius: 8, backgroundColor: '#FEF3C7', gap: 8 },
     rateStars: { flexDirection: 'row', gap: 2 },
     ratePromptText: { fontSize: 13, color: '#92400E', fontWeight: '600' },
+    cancelButton: { marginTop: 10, paddingVertical: 10, borderRadius: 8, borderWidth: 1, borderColor: '#D32F2F', alignItems: 'center' },
+    cancelButtonText: { color: '#D32F2F', fontSize: 13, fontWeight: '700' },
     rebookButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 10, borderRadius: 8, backgroundColor: '#13294B', gap: 6 },
     rebookButtonText: { fontSize: 13, color: '#FFFFFF', fontWeight: '700' },
 });

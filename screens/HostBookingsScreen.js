@@ -23,8 +23,10 @@ export default function HostBookingsScreen({ navigation }) {
             const token = await SecureStore.getItemAsync('token');
 
             const response = await fetch(`${BACKEND_URL}/bookings/host/me`, {
-                headers: { 'Authorization': `Bearer ${token}`,
-                 'ngrok-skip-browser-warning': 'true' }
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'ngrok-skip-browser-warning': 'true'
+                }
             });
 
             if (response.status === 401 || response.status === 403) {
@@ -169,6 +171,12 @@ export default function HostBookingsScreen({ navigation }) {
                         {/* 🌐 Forced LTR so time formatting doesn't break in Arabic */}
                         <Text style={[styles.infoText, { direction: 'ltr' }]}>{formatTo12Hour(item.start_time)} - {formatTo12Hour(item.end_time)}</Text>
                     </View>
+                    {item.room_name && (
+                        <View style={styles.infoRow}>
+                            <Ionicons name="grid-outline" size={16} color="#888" />
+                            <Text style={styles.infoText}>{t('room') || 'Room:'} <Text style={styles.boldText}>{item.room_name}</Text></Text>
+                        </View>
+                    )}
                     <View style={styles.infoRow}>
                         <Ionicons name="cash-outline" size={16} color="#888" />
                         <Text style={styles.infoText}>
