@@ -167,7 +167,7 @@ export default function BookingReceiptScreen({ route, navigation }) {
                 <View style={styles.priceCard}>
                     <Text style={styles.priceTitle}>{t('price_breakdown') || 'Price Breakdown'}</Text>
                     <View style={styles.priceRow}>
-                        <Text style={styles.priceLabel}>{t('price_per_hour') || 'Price / hr'}</Text>
+                        <Text style={styles.priceLabel}>{t('price_per_hour_label') || 'Price / hr'}</Text>
                         <Text style={styles.priceValue}>{formatNumber(booking.price_per_hour)} {t('egp') || 'EGP'}</Text>
                     </View>
                     <View style={styles.priceRow}>
