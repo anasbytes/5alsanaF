@@ -912,7 +912,6 @@ const styles = StyleSheet.create({
     saveButton: { backgroundColor: '#E8751A', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 30, borderWidth: 1, borderColor: '#E8751A', marginBottom: 20 },
     saveButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
     imagePickerBtn: { width: 140, height: 140, borderRadius: 10, overflow: 'hidden', backgroundColor: '#F9F6F0', borderWidth: 1, borderColor: '#D4D0C8', borderStyle: 'dashed' },
-    previewImage: { width: '100%', height: '100%', resizeMode: 'cover' },
     imagePlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     imagePlaceholderText: { marginTop: 8, color: '#A0A0A0', fontWeight: '600', fontSize: 14 },
     mapContainer: { flex: 1, borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#D4D0C8', marginBottom: 15 },

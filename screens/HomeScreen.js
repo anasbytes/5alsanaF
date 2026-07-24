@@ -536,8 +536,6 @@ const styles = StyleSheet.create({
     distanceText: { fontSize: 10, fontWeight: '800', color: '#1565C0', marginStart: 3 },
     locationContainer: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginStart: 10, marginBottom: 4 },
     cardLocation: { fontSize: 13, color: '#555555', marginStart: 4, flexShrink: 1, fontWeight: '600' },
-    emptyContainer: { alignItems: 'center', marginTop: 30 },
-    emptyText: { textAlign: 'center', marginTop: 15, fontSize: 15, color: '#888888', fontWeight: '600' },
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
     modalContent: { backgroundColor: '#FFF', borderRadius: 16, width: '100%', padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
