@@ -37,6 +37,17 @@ export default function MyFacilitiesScreen() {
     const [roomPrice, setRoomPrice] = useState('');
     const [editingRoom, setEditingRoom] = useState(null);
     const [roomSubmitting, setRoomSubmitting] = useState(false);
+    const [blockModalVisible, setBlockModalVisible] = useState(false);
+    const [blockingFacility, setBlockingFacility] = useState(null);
+    const [blockedSlots, setBlockedSlots] = useState([]);
+    const [blockDate, setBlockDate] = useState('');
+    const [blockStartTime, setBlockStartTime] = useState('');
+    const [blockEndTime, setBlockEndTime] = useState('');
+    const [blockReason, setBlockReason] = useState('');
+    const [isFullDay, setIsFullDay] = useState(false);
+    const [blockSubmitting, setBlockSubmitting] = useState(false);
+    const [selectedBlockRoom, setSelectedBlockRoom] = useState(null);
+    const [blockRooms, setBlockRooms] = useState([]);
 
 
     const [name, setName] = useState('');
@@ -357,17 +368,93 @@ export default function MyFacilitiesScreen() {
 
 
 
-   
 
 
 
-    
 
-    
 
-   
 
-    
+
+
+
+
+
+
+    const fetchBlockedSlots = async (facilityId) => {
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${BACKEND_URL}/blocked-slots/facility/${facilityId}`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) setBlockedSlots(await res.json());
+        } catch (e) { console.error(e); }
+    };
+
+    const openBlockModal = async (facility) => {
+        setBlockingFacility(facility);
+        setBlockedSlots([]);
+        setBlockDate(''); setBlockStartTime(''); setBlockEndTime('');
+        setBlockReason(''); setIsFullDay(false);
+        setSelectedBlockRoom(null);
+        fetchBlockedSlots(facility.id);
+        try {
+            const res = await fetch(`${BACKEND_URL}/rooms/facility/${facility.id}`, {
+                headers: { 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (res.ok) setBlockRooms(await res.json());
+            else setBlockRooms([]);
+        } catch (e) { setBlockRooms([]); }
+        setBlockModalVisible(true);
+    };
+
+    const handleAddBlock = async () => {
+        if (!blockDate) return;
+        if (!isFullDay && (!blockStartTime || !blockEndTime)) return;
+        setBlockSubmitting(true);
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${BACKEND_URL}/blocked-slots`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json', 'ngrok-skip-browser-warning': 'true' },
+                body: JSON.stringify({
+                    facility_id: blockingFacility.id,
+                    room_id: selectedBlockRoom?.id || null,
+                    blocked_date: blockDate,
+                    start_time: isFullDay ? null : blockStartTime,
+                    end_time: isFullDay ? null : blockEndTime,
+                    reason: blockReason || null,
+                    is_full_day: isFullDay
+                })
+            });
+            if (res.ok) {
+                setBlockDate(''); setBlockStartTime(''); setBlockEndTime('');
+                setBlockReason(''); setIsFullDay(false); setSelectedBlockRoom(null);
+                fetchBlockedSlots(blockingFacility.id);
+            } else {
+                const data = await res.json();
+                Alert.alert(t('error_generic'), data.error || t('something_went_wrong'));
+            }
+        } catch (e) { console.error(e); }
+        finally { setBlockSubmitting(false); }
+    };
+
+    const handleDeleteBlock = (block) => {
+        Alert.alert(t('delete') || 'Delete', `Remove block for ${block.blocked_date.split('T')[0]}?`, [
+            { text: t('cancel'), style: 'cancel' },
+            {
+                text: t('delete'), style: 'destructive', onPress: async () => {
+                    try {
+                        const token = await SecureStore.getItemAsync('token');
+                        await fetch(`${BACKEND_URL}/blocked-slots/${block.id}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+                        });
+                        fetchBlockedSlots(blockingFacility.id);
+                    } catch (e) { console.error(e); }
+                }
+            }
+        ]);
+    };
 
     const getTypeIcon = (facilityType) => {
         switch (facilityType.toLowerCase()) {
@@ -409,9 +496,13 @@ export default function MyFacilitiesScreen() {
                     <Ionicons name="pencil" size={16} color="#13294B" />
                     <Text style={styles.actionBtnText}>{t('edit_details')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#F0F4F8', marginEnd: 0 }]} onPress={() => openRoomModal(item)}>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#F0F4F8', marginEnd: 8 }]} onPress={() => openRoomModal(item)}>
                     <Ionicons name="grid-outline" size={16} color="#13294B" />
                     <Text style={styles.actionBtnText}>{t('manage_rooms') || 'Rooms'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.actionBtn, { backgroundColor: '#FFF3E8', marginEnd: 0 }]} onPress={() => openBlockModal(item)}>
+                    <Ionicons name="ban-outline" size={16} color="#E8751A" />
+                    <Text style={[styles.actionBtnText, { color: '#E8751A' }]}>{t('block_dates') || 'Block'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDelete(item)}>
                     <Ionicons name="trash-outline" size={18} color="#D32F2F" />
@@ -656,6 +747,117 @@ export default function MyFacilitiesScreen() {
                                 disabled={!roomName.trim() || !roomPrice.trim() || roomSubmitting}
                             >
                                 {roomSubmitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveButtonText}>{editingRoom ? (t('save_changes') || 'Save Changes') : (t('add_facility') || 'Add Room')}</Text>}
+                            </TouchableOpacity>
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
+            <Modal visible={blockModalVisible} animationType="slide" transparent={true} onRequestClose={() => setBlockModalVisible(false)}>
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>{blockingFacility?.name} — {t('block_dates') || 'Block Dates'}</Text>
+                            <TouchableOpacity onPress={() => setBlockModalVisible(false)} style={styles.closeBtn}>
+                                <Ionicons name="close" size={24} color="#888" />
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+                            {blockedSlots.length > 0 && (
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={styles.label}>{t('existing_blocks') || 'Existing Blocks'}</Text>
+                                    {blockedSlots.map(b => (
+                                        <View key={b.id} style={[styles.card, { marginBottom: 8, paddingVertical: 10 }]}>
+                                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <View>
+                                                    <Text style={{ fontWeight: '800', color: '#13294B', fontSize: 14 }}>{b.blocked_date.split('T')[0]}</Text>
+                                                    <Text style={{ color: '#888', fontSize: 12, marginTop: 2 }}>
+                                                        {b.is_full_day ? (t('full_day') || 'Full Day') : `${b.start_time?.slice(0, 5)} – ${b.end_time?.slice(0, 5)}`}
+                                                        {b.reason ? ` · ${b.reason}` : ''}
+                                                        {b.room_id ? ` · ${blockRooms.find(r => r.id === b.room_id)?.name || 'Room'}` : ''}
+                                                    </Text>
+                                                </View>
+                                                <TouchableOpacity style={styles.deleteBtn} onPress={() => handleDeleteBlock(b)}>
+                                                    <Ionicons name="trash-outline" size={15} color="#D32F2F" />
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+
+                            <Text style={styles.label}>{t('add_block') || 'Add Block'}</Text>
+
+                            {blockRooms.length > 0 && (
+                                <View style={{ marginBottom: 12 }}>
+                                    <Text style={[styles.label, { marginTop: 0 }]}>{t('room_optional') || 'Room (optional — leave blank to block whole facility)'}</Text>
+                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 4 }}>
+                                        <TouchableOpacity
+                                            style={[styles.typeBadge, !selectedBlockRoom && styles.activeTypeBadge, { marginEnd: 6 }]}
+                                            onPress={() => setSelectedBlockRoom(null)}
+                                        >
+                                            <Text style={[styles.typeText, !selectedBlockRoom && styles.activeTypeText]}>{t('all_rooms') || 'All Rooms'}</Text>
+                                        </TouchableOpacity>
+                                        {blockRooms.map(r => (
+                                            <TouchableOpacity
+                                                key={r.id}
+                                                style={[styles.typeBadge, selectedBlockRoom?.id === r.id && styles.activeTypeBadge, { marginEnd: 6 }]}
+                                                onPress={() => setSelectedBlockRoom(r)}
+                                            >
+                                                <Text style={[styles.typeText, selectedBlockRoom?.id === r.id && styles.activeTypeText]}>{r.name}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+                            )}
+
+                            <TextInput
+                                style={[styles.input, { marginBottom: 10, textAlign: isRTL ? 'right' : 'left' }]}
+                                value={blockDate}
+                                onChangeText={setBlockDate}
+                                placeholder="YYYY-MM-DD"
+                                placeholderTextColor="#A0A0A0"
+                            />
+
+                            <TouchableOpacity
+                                style={[styles.typeBadge, isFullDay && styles.activeTypeBadge, { alignSelf: 'flex-start', marginBottom: 10 }]}
+                                onPress={() => setIsFullDay(!isFullDay)}
+                            >
+                                <Text style={[styles.typeText, isFullDay && styles.activeTypeText]}>{t('full_day') || 'Full Day'}</Text>
+                            </TouchableOpacity>
+
+                            {!isFullDay && (
+                                <>
+                                    <TextInput
+                                        style={[styles.input, { marginBottom: 10, textAlign: isRTL ? 'right' : 'left' }]}
+                                        value={blockStartTime}
+                                        onChangeText={setBlockStartTime}
+                                        placeholder="Start time HH:MM (e.g. 14:00)"
+                                        placeholderTextColor="#A0A0A0"
+                                    />
+                                    <TextInput
+                                        style={[styles.input, { marginBottom: 10, textAlign: isRTL ? 'right' : 'left' }]}
+                                        value={blockEndTime}
+                                        onChangeText={setBlockEndTime}
+                                        placeholder="End time HH:MM (e.g. 18:00)"
+                                        placeholderTextColor="#A0A0A0"
+                                    />
+                                </>
+                            )}
+
+                            <TextInput
+                                style={[styles.input, { marginBottom: 10, textAlign: isRTL ? 'right' : 'left' }]}
+                                value={blockReason}
+                                onChangeText={setBlockReason}
+                                placeholder={t('reason_optional') || 'Reason (optional)'}
+                                placeholderTextColor="#A0A0A0"
+                            />
+
+                            <TouchableOpacity
+                                style={[styles.saveButton, (blockSubmitting || !blockDate || (!isFullDay && (!blockStartTime || !blockEndTime))) && { opacity: 0.5 }]}
+                                onPress={handleAddBlock}
+                                disabled={blockSubmitting || !blockDate || (!isFullDay && (!blockStartTime || !blockEndTime))}
+                            >
+                                {blockSubmitting ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveButtonText}>{t('add_block') || 'Add Block'}</Text>}
                             </TouchableOpacity>
                         </ScrollView>
                     </View>

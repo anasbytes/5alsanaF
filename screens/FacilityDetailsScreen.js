@@ -49,6 +49,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
     const [selectedDate, setSelectedDate] = useState('');
     const [rooms, setRooms] = useState([]);
     const [selectedRoom, setSelectedRoom] = useState(null);
+    const [blockedSlots, setBlockedSlots] = useState([]);
 
     const [startTime, setStartTime] = useState(null);
     const [endTime, setEndTime] = useState(null);
@@ -107,6 +108,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         checkFavoriteStatus();
         fetchReviews();
         fetchRooms();
+        fetchBlockedSlots();
         if (!booking) {
             if (facility?.id) fetchFacilityAvailability();
         }
@@ -281,6 +283,16 @@ export default function FacilityDetailsScreen({ route, navigation }) {
         } catch (e) { console.error(e); }
     };
 
+    const fetchBlockedSlots = async (roomId = null) => {
+        try {
+            const url = roomId
+                ? `${process.env.EXPO_PUBLIC_API_URL}/blocked-slots/facility/${facility.id}?room_id=${roomId}`
+                : `${process.env.EXPO_PUBLIC_API_URL}/blocked-slots/facility/${facility.id}`;
+            const res = await fetch(url, { headers: { 'ngrok-skip-browser-warning': 'true' } });
+            if (res.ok) setBlockedSlots(await res.json());
+        } catch (e) { console.error(e); }
+    };
+
     const triggerFadeTransition = (nextStep) => {
         Animated.timing(fadeAnim, {
             toValue: 0,
@@ -336,9 +348,20 @@ export default function FacilityDetailsScreen({ route, navigation }) {
             });
         }
 
+        const blockedTimesOnDate = blockedSlots.filter(b => {
+            const bDate = b.blocked_date.split('T')[0];
+            return bDate === selectedDate && !b.is_full_day;
+        });
+
         if (selectionMode === 'start') {
             return availableSlots.filter(time => {
                 const slotNum = getNumericFrom24(formatTimeTo24Hour(time));
+                const isBlockedByHost = blockedTimesOnDate.some(b => {
+                    const bStart = getNumericFrom24(b.start_time);
+                    const bEnd = getNumericFrom24(b.end_time);
+                    return slotNum >= bStart && slotNum < bEnd;
+                });
+                if (isBlockedByHost) return false;
                 return !bookedTimesOnDate.some(b => {
                     const bStart = getNumericFrom24(b.start_time);
                     const bEnd = getNumericFrom24(b.end_time);
@@ -356,12 +379,17 @@ export default function FacilityDetailsScreen({ route, navigation }) {
 
             return possibleEndTimes.filter(endTimeCandidate => {
                 const endNum = getNumericFrom24(formatTimeTo24Hour(endTimeCandidate));
-                const hasOverlap = bookedTimesOnDate.some(b => {
+                const hasBookingOverlap = bookedTimesOnDate.some(b => {
                     const bStart = getNumericFrom24(b.start_time);
                     const bEnd = getNumericFrom24(b.end_time);
                     return Math.max(startNum, bStart) < Math.min(endNum, bEnd);
                 });
-                return !hasOverlap;
+                const hasBlockOverlap = blockedTimesOnDate.some(b => {
+                    const bStart = getNumericFrom24(b.start_time);
+                    const bEnd = getNumericFrom24(b.end_time);
+                    return Math.max(startNum, bStart) < Math.min(endNum, bEnd);
+                });
+                return !hasBookingOverlap && !hasBlockOverlap;
             });
         }
     };
@@ -684,6 +712,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                                             onPress={() => {
                                                 setSelectedRoom(room);
                                                 fetchFacilityAvailability(room.id);
+                                                fetchBlockedSlots(room.id);
                                                 triggerFadeTransition('time');
                                             }}
                                         >
@@ -703,6 +732,13 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                                     }}
                                     minDate={todayStr}
                                     markedDates={{
+                                        ...blockedSlots
+                                            .filter(b => b.is_full_day)
+                                            .reduce((acc, b) => {
+                                                const d = b.blocked_date.split('T')[0];
+                                                acc[d] = { disabled: true, disableTouchEvent: true, marked: true, dotColor: '#DC2626' };
+                                                return acc;
+                                            }, {}),
                                         [selectedDate]: { selected: true, selectedColor: '#13294B', selectedTextColor: '#FFFFFF' }
                                     }}
                                     style={styles.calendarStyle}
