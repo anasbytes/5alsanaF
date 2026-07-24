@@ -430,14 +430,14 @@ export default function FacilityDetailsScreen({ route, navigation }) {
             });
 
             if (response.ok) {
-                alert(t('request_sent') || 'Request Sent! Waiting for host approval.');
+                Alert.alert(t('request_sent') || 'Request Sent! Waiting for host approval.');
                 setIsModalVisible(false);
                 fetchFacilityAvailability();
             } else if (response.status === 401 || response.status === 403) {
                 await signOut();
             } else if (response.status === 409) {
                 // 🛡️ DOUBLE-BOOKING PREVENTED
-                alert(t('slot_taken') || 'Too late! Someone just booked this exact time slot. Please choose another time.');
+                Alert.alert(t('slot_taken') || 'Too late! Someone just booked this exact time slot. Please choose another time.');
 
                 fetchFacilityAvailability();
 
@@ -445,16 +445,16 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 setEndTime(null);
                 setSelectionMode('start');
             } else {
-                alert(t('booking_failed') || 'Failed to book. Please try again.');
+                Alert.alert(t('booking_failed') || 'Failed to book. Please try again.');
             }
         } catch (error) {
             console.error("Booking error:", error);
 
             // 🛡️ OFFLINE PROTECTION
             if (error instanceof TypeError || error.message.includes('Network')) {
-                alert(t('offline_error') || 'You appear to be offline. Please check your connection and try again.');
+                Alert.alert(t('offline_error') || 'You appear to be offline. Please check your connection and try again.');
             } else {
-                alert(t('server_error') || 'Something went wrong connecting to the server.');
+                Alert.alert(t('server_error') || 'Something went wrong connecting to the server.');
             }
         } finally {
             setIsSubmitting(false);

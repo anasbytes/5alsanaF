@@ -198,10 +198,10 @@ export default function AccountScreen() {
     const pickAvatar = async () => {
 
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-if (status !== 'granted') {
-    Alert.alert(t('permission_denied'), t('need_location_access'));
-    return;
-}StarRating.js
+        if (status !== 'granted') {
+            Alert.alert(t('permission_denied'), t('need_location_access'));
+            return;
+        }
 
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
