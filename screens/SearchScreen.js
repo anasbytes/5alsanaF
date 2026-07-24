@@ -450,7 +450,7 @@ export default function SearchScreen({ navigation }) {
                                     )}
                                     <Text style={styles.calloutTitle}>{item.name}</Text>
                                     <Text style={styles.calloutPrice}>{item.price_per_hour} {t('egp')}/hr</Text>
-                                    <Text style={styles.calloutTap}>Tap to view</Text>
+                                    <Text style={styles.calloutTap}>{t('tap_to_view') || 'Tap to view'}</Text>
                                 </View>
                             </Callout>
                         </Marker>

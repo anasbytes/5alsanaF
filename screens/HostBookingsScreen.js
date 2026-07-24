@@ -124,6 +124,7 @@ export default function HostBookingsScreen({ navigation }) {
     const getStatusStyle = (status) => {
         switch (status.toLowerCase()) {
             case 'confirmed': return { color: '#2E8B57', bg: '#E8F5E9', icon: 'checkmark-circle', text: t('confirmed') || 'CONFIRMED' };
+            case 'active': return { color: '#1565C0', bg: '#E3F2FD', icon: 'play-circle', text: t('active') || 'ACTIVE' };
             case 'cancelled': return { color: '#D32F2F', bg: '#FFEBEE', icon: 'close-circle', text: t('cancelled') || 'CANCELLED' };
             case 'completed': return { color: '#888888', bg: '#F5F5F5', icon: 'checkmark-done-circle', text: t('completed') || 'COMPLETED' };
             default: return { color: '#E8751A', bg: '#FFF3E8', icon: 'time', text: t('pending') || 'PENDING' };

@@ -237,7 +237,7 @@ export default function BookingsScreen({ navigation }) {
                     </View>
                 </View>
 
-                {(statusConfig.rawText === 'PENDING' || statusConfig.rawText === 'CONFIRMED') && (
+                {(statusConfig.rawText === 'PENDING' || statusConfig.rawText === 'CONFIRMED' || statusConfig.rawText === 'ACTIVE') && (
                     <TouchableOpacity
                         style={styles.cancelButton}
                         onPress={() => handleCancel(item)}

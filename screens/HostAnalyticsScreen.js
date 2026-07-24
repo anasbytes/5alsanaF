@@ -40,13 +40,13 @@ export default function HostAnalyticsScreen() {
         }
     };
 
-    const confirmed = bookings.filter(b => ['confirmed', 'completed'].includes(b.status));
+    const confirmed = bookings.filter(b => ['confirmed', 'active', 'completed'].includes(b.status));
     const totalRevenue = confirmed.reduce((sum, b) => sum + parseFloat(b.total_price || 0), 0);
     const totalBookings = bookings.length;
     const pendingCount = bookings.filter(b => b.status === 'pending').length;
     const cancelledCount = bookings.filter(b => b.status === 'cancelled').length;
     const completedCount = bookings.filter(b => b.status === 'completed').length;
-    const confirmedCount = bookings.filter(b => b.status === 'confirmed').length;
+    const confirmedCount = bookings.filter(b => ['confirmed', 'active'].includes(b.status)).length;
 
     const weeksData = (() => {
         const weeks = [0, 0, 0, 0];
