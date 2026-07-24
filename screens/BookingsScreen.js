@@ -245,6 +245,25 @@ export default function BookingsScreen({ navigation }) {
                         <Text style={styles.receiptButtonText}>{t('view_receipt') || 'View Receipt'}</Text>
                     </TouchableOpacity>
                 </View>
+
+                {(isCompleted || statusConfig.rawText === 'CANCELLED') && (
+                    <TouchableOpacity
+                        style={styles.rebookButton}
+                        onPress={() => navigation.navigate('FacilityDetails', {
+                            facility: {
+                                id: item.facility_id,
+                                name: item.facility_name,
+                                type: item.facility_type,
+                                location: item.facility_location,
+                                images: item.images,
+                                price_per_hour: item.price_per_hour
+                            }
+                        })}
+                    >
+                        <Ionicons name="refresh-outline" size={14} color="#FFFFFF" />
+                        <Text style={styles.rebookButtonText}>{t('book_again') || 'Book Again'}</Text>
+                    </TouchableOpacity>
+                )}
             </TouchableOpacity>
         );
     };
@@ -330,4 +349,6 @@ const styles = StyleSheet.create({
     ratePrompt: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12, paddingVertical: 10, borderRadius: 8, backgroundColor: '#FEF3C7', gap: 8 },
     rateStars: { flexDirection: 'row', gap: 2 },
     ratePromptText: { fontSize: 13, color: '#92400E', fontWeight: '600' },
+    rebookButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, paddingVertical: 10, borderRadius: 8, backgroundColor: '#13294B', gap: 6 },
+    rebookButtonText: { fontSize: 13, color: '#FFFFFF', fontWeight: '700' },
 });

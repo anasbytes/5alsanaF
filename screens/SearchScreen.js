@@ -63,6 +63,8 @@ export default function SearchScreen({ navigation }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [activeCategory, setActiveCategory] = useState('All');
     const [sortBy, setSortBy] = useState('default');
+    const [minPrice, setMinPrice] = useState('');
+    const [maxPrice, setMaxPrice] = useState('');
     const [refreshing, setRefreshing] = useState(false);
 
     const [userCoords, setUserCoords] = useState(null);
@@ -210,6 +212,9 @@ export default function SearchScreen({ navigation }) {
             result = result.filter(f => favoritedIds.has(f.id));
         }
 
+        if (minPrice !== '') result = result.filter(f => parseFloat(f.price_per_hour) >= parseFloat(minPrice));
+        if (maxPrice !== '') result = result.filter(f => parseFloat(f.price_per_hour) <= parseFloat(maxPrice));
+
         if (userCoords) {
             result = result.map(f => {
                 const dist = getDistance(
@@ -348,6 +353,33 @@ export default function SearchScreen({ navigation }) {
                         <Text style={[styles.sortText, sortBy === option && styles.activeSortText]}>{sortLabels[option]}</Text>
                     </TouchableOpacity>
                 ))}
+            </View>
+
+            <View style={styles.priceFilterContainer}>
+                <Ionicons name="cash-outline" size={14} color="#13294B" style={{ marginEnd: 6 }} />
+                <TextInput
+                    style={styles.priceInput}
+                    placeholder={t('min_price') || 'Min'}
+                    placeholderTextColor="#A0A0A0"
+                    value={minPrice}
+                    onChangeText={setMinPrice}
+                    keyboardType="numeric"
+                />
+                <Text style={{ color: '#888', marginHorizontal: 6, fontWeight: '700' }}>–</Text>
+                <TextInput
+                    style={styles.priceInput}
+                    placeholder={t('max_price') || 'Max'}
+                    placeholderTextColor="#A0A0A0"
+                    value={maxPrice}
+                    onChangeText={setMaxPrice}
+                    keyboardType="numeric"
+                />
+                <Text style={{ color: '#888', marginStart: 4, fontSize: 12, fontWeight: '600' }}>{t('egp') || 'EGP'}</Text>
+                {(minPrice !== '' || maxPrice !== '') && (
+                    <TouchableOpacity onPress={() => { setMinPrice(''); setMaxPrice(''); }} style={{ marginStart: 8 }}>
+                        <Ionicons name="close-circle" size={18} color="#888" />
+                    </TouchableOpacity>
+                )}
             </View>
 
             <View style={styles.viewToggleContainer}>
@@ -503,6 +535,8 @@ const styles = StyleSheet.create({
     calloutTitle: { fontSize: 14, fontWeight: '700', color: '#13294B', marginBottom: 2 },
     calloutPrice: { fontSize: 12, color: '#E8751A', fontWeight: '600' },
     calloutTap: { fontSize: 11, color: '#888', marginTop: 4 },
+    priceFilterContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginBottom: 12 },
+    priceInput: { flex: 1, height: 36, backgroundColor: '#FFFFFF', borderRadius: 8, borderWidth: 1, borderColor: '#D4D0C8', paddingHorizontal: 10, fontSize: 13, color: '#13294B', fontWeight: '600' },
     cardImage: {
         width: '100%',
         height: 200,

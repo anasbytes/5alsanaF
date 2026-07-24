@@ -45,6 +45,19 @@ const translations = {
         no_reviews_yet: "No reviews yet.",
         leave_review: "Leave a Review",
         rate_experience: "Rate your experience",
+        book_again: "Book Again",
+        min_price: "Min",
+        max_price: "Max",
+        manage_rooms: "Rooms",
+        block_dates: "Block",
+        add_block: "Add Block",
+        existing_blocks: "Existing Blocks",
+        full_day: "Full Day",
+        all_rooms: "All Rooms",
+        room_optional: "Room (optional — leave blank to block whole facility)",
+        reason_optional: "Reason (optional)",
+        select_room: "Select Room",
+        egp_hr: "EGP / hr",
         review_submitted: "Review Submitted",
         review_failed: "Failed to submit review.",
         select_rating: "Please select a rating.",
@@ -175,7 +188,7 @@ const translations = {
         confirm_location: "Confirm Location",
 
         list_view: "List",
-map_view_toggle: "Map",
+        map_view_toggle: "Map",
 
         // Search Screen
         closest_to_me: "Closest to Me",
@@ -188,16 +201,16 @@ map_view_toggle: "Map",
         km_short: "km",
 
         // Onboarding
-onboarding_welcome: "Welcome to 5alsana",
-onboarding_welcome_sub: "Book sports & entertainment venues across Egypt in seconds.",
-onboarding_how_title: "How It Works",
-onboarding_how_sub: "Browse football courts, padel, basketball, PlayStation rooms and more. Players book, hosts manage.",
-onboarding_start_title: "Ready to Play?",
-onboarding_start_sub: "Create an account or log in to get started.",
-onboarding_next: "Next",
-onboarding_skip: "Skip",
-onboarding_login: "Log In",
-onboarding_signup: "Sign Up",
+        onboarding_welcome: "Welcome to 5alsana",
+        onboarding_welcome_sub: "Book sports & entertainment venues across Egypt in seconds.",
+        onboarding_how_title: "How It Works",
+        onboarding_how_sub: "Browse football courts, padel, basketball, PlayStation rooms and more. Players book, hosts manage.",
+        onboarding_start_title: "Ready to Play?",
+        onboarding_start_sub: "Create an account or log in to get started.",
+        onboarding_next: "Next",
+        onboarding_skip: "Skip",
+        onboarding_login: "Log In",
+        onboarding_signup: "Sign Up",
 
         // Account Screen
         profile: "Profile",
@@ -247,8 +260,8 @@ onboarding_signup: "Sign Up",
         decline: "Decline",
 
         empty_home_title: "No venues near you yet",
-empty_home_sub: "5alsana connects you with sports & entertainment venues across Egypt. Try changing your location or check back soon.",
-empty_category_sub: "No venues found for this category. Try another one.",
+        empty_home_sub: "5alsana connects you with sports & entertainment venues across Egypt. Try changing your location or check back soon.",
+        empty_category_sub: "No venues found for this category. Try another one.",
     },
     ar: {
         // Nav
@@ -289,6 +302,19 @@ empty_category_sub: "No venues found for this category. Try another one.",
         no_reviews_yet: "لا توجد تقييمات بعد.",
         leave_review: "اترك تقييماً",
         rate_experience: "قيّم تجربتك",
+        book_again: "احجز مجدداً",
+        min_price: "أدنى",
+        max_price: "أقصى",
+        manage_rooms: "الغرف",
+        block_dates: "حظر",
+        add_block: "إضافة حظر",
+        existing_blocks: "الحظر الحالي",
+        full_day: "يوم كامل",
+        all_rooms: "جميع الغرف",
+        room_optional: "الغرفة (اختياري — اتركه فارغاً لحظر المنشأة بالكامل)",
+        reason_optional: "السبب (اختياري)",
+        select_room: "اختر الغرفة",
+        egp_hr: "جنيه / ساعة",
         review_submitted: "تم إرسال التقييم",
         review_failed: "فشل إرسال التقييم.",
         select_rating: "يرجى اختيار تقييم.",
@@ -403,23 +429,23 @@ empty_category_sub: "No venues found for this category. Try another one.",
         confirm_location: "تأكيد الموقع",
 
         list_view: "قائمة",
-map_view_toggle: "خريطة",
+        map_view_toggle: "خريطة",
 
-empty_home_title: "لا توجد ملاعب بالقرب منك بعد",
-empty_home_sub: "خلصنا يربطك بملاعب رياضية وترفيهية في مصر. جرّب تغيير موقعك أو عُد لاحقاً.",
-empty_category_sub: "لا توجد ملاعب لهذه الفئة. جرّب فئة أخرى.",
+        empty_home_title: "لا توجد ملاعب بالقرب منك بعد",
+        empty_home_sub: "خلصنا يربطك بملاعب رياضية وترفيهية في مصر. جرّب تغيير موقعك أو عُد لاحقاً.",
+        empty_category_sub: "لا توجد ملاعب لهذه الفئة. جرّب فئة أخرى.",
 
         // Onboarding
-onboarding_welcome: "أهلاً بك في خلصنا",
-onboarding_welcome_sub: "احجز ملاعب رياضية وترفيهية في مصر في ثوانٍ.",
-onboarding_how_title: "كيف يعمل التطبيق",
-onboarding_how_sub: "تصفح ملاعب كرة القدم، البادل، كرة السلة، غرف البلايستيشن والمزيد. اللاعبون يحجزون، والمضيفون يديرون.",
-onboarding_start_title: "مستعد للعب؟",
-onboarding_start_sub: "أنشئ حساباً أو سجّل دخولك للبدء.",
-onboarding_next: "التالي",
-onboarding_skip: "تخطي",
-onboarding_login: "تسجيل الدخول",
-onboarding_signup: "إنشاء حساب",
+        onboarding_welcome: "أهلاً بك في خلصنا",
+        onboarding_welcome_sub: "احجز ملاعب رياضية وترفيهية في مصر في ثوانٍ.",
+        onboarding_how_title: "كيف يعمل التطبيق",
+        onboarding_how_sub: "تصفح ملاعب كرة القدم، البادل، كرة السلة، غرف البلايستيشن والمزيد. اللاعبون يحجزون، والمضيفون يديرون.",
+        onboarding_start_title: "مستعد للعب؟",
+        onboarding_start_sub: "أنشئ حساباً أو سجّل دخولك للبدء.",
+        onboarding_next: "التالي",
+        onboarding_skip: "تخطي",
+        onboarding_login: "تسجيل الدخول",
+        onboarding_signup: "إنشاء حساب",
 
         // Search Screen
         closest_to_me: "الأقرب لي",
@@ -493,7 +519,7 @@ onboarding_signup: "إنشاء حساب",
         update_failed: "فشل في تحديث حالة الحجز.",
         accept: "قبول",
         decline: "رفض",
-        
+
     }
 };
 
@@ -543,14 +569,14 @@ export const LanguageProvider = ({ children }) => {
     };
 
     const t = (key) => {
-        return translations[language]?.[key] || key; 
+        return translations[language]?.[key] || key;
     };
 
     const formatNumber = (num) => {
         if (num === null || num === undefined) return '';
         const numStr = num.toString();
         if (language === 'ar') {
-             return numStr.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+            return numStr.replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
         }
         return numStr;
     };
