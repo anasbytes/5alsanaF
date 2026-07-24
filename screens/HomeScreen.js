@@ -83,6 +83,7 @@ export default function HomeScreen({ navigation }) {
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [availabilityMap, setAvailabilityMap] = useState({});
 
     // Load Recents when returning to Home Screen
     useFocusEffect(
@@ -101,6 +102,7 @@ export default function HomeScreen({ navigation }) {
         setHasMore(true);
         setLoading(true);
         fetchFacilities(0, controller.signal, activeCategory);
+        fetchAvailability();
         return () => controller.abort();
     }, [activeCategory]);
 
@@ -147,6 +149,42 @@ export default function HomeScreen({ navigation }) {
         }
 
         navigation.navigate('FacilityDetails', { facility });
+    };
+
+    const fetchAvailability = async () => {
+        try {
+            const token = await SecureStore.getItemAsync('token');
+            const res = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/bookings/availability/today`, {
+                headers: { 'Authorization': `Bearer ${token}`, 'ngrok-skip-browser-warning': 'true' }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            const map = {};
+            const now = new Date();
+            const timeSlots = [
+                '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
+                '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00',
+                '00:00', '01:00', '02:00', '03:00'
+            ];
+            const getNum = (t) => {
+                const [h, m] = t.split(':').map(Number);
+                return h < 6 ? h + 24 + m / 60 : h + m / 60;
+            };
+            const nowNum = now.getHours() < 6 ? now.getHours() + 24 + now.getMinutes() / 60 : now.getHours() + now.getMinutes() / 60;
+            data.forEach(({ facility_id, bookings }) => {
+                const hasSlot = timeSlots.some(slot => {
+                    const slotNum = getNum(slot);
+                    if (slotNum <= nowNum) return false;
+                    return !bookings.some(b => {
+                        const bStart = getNum(b.start_time.slice(0, 5));
+                        const bEnd = getNum(b.end_time.slice(0, 5));
+                        return slotNum >= bStart && slotNum < bEnd;
+                    });
+                });
+                map[facility_id] = hasSlot ? 'free' : 'busy';
+            });
+            setAvailabilityMap(map);
+        } catch (e) { console.error(e); }
     };
 
     const fetchUserLocation = async () => {
@@ -315,42 +353,49 @@ export default function HomeScreen({ navigation }) {
         </View>
     );
 
-   const renderFacility = ({ item }) => (
-    <TouchableOpacity
-        style={styles.card}
-        activeOpacity={0.7}
-        onPress={() => handleFacilityPress(item)}
-    >
-        <Image source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
+    const renderFacility = ({ item }) => (
+        <TouchableOpacity
+            style={styles.card}
+            activeOpacity={0.7}
+            onPress={() => handleFacilityPress(item)}
+        >
+            <Image source={item.images?.length > 0 ? { uri: item.images[0] } : require('../assets/no-image-placeholder.png')} style={styles.cardImage} />
 
-        <View style={styles.cardContent}>
-            <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.cardPrice}>{formatNumber(item.price_per_hour)} <Text style={{ fontSize: 11 }}>{t('egp')}</Text></Text>
-            </View>
-            <View style={styles.cardBody}>
-                <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{t(item.type?.toLowerCase() || 'general') || item.type?.toUpperCase()}</Text>
+            <View style={styles.cardContent}>
+                <View style={styles.cardHeader}>
+                    <Text style={styles.cardTitle} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.cardPrice}>{formatNumber(item.price_per_hour)} <Text style={{ fontSize: 11 }}>{t('egp')}</Text></Text>
                 </View>
-                {item.distance !== undefined && item.distance !== Infinity && (
-                    <View style={styles.distanceBadge}>
-                        <Ionicons name="navigate" size={10} color="#1565C0" />
-                        <Text style={styles.distanceText}>
-                            {formatNumber(item.distance.toFixed(1))} {t('km_short')}
-                        </Text>
+                <View style={styles.cardBody}>
+                    <View style={styles.badge}>
+                        <Text style={styles.badgeText}>{t(item.type?.toLowerCase() || 'general') || item.type?.toUpperCase()}</Text>
                     </View>
-                )}
-                <View style={styles.locationContainer}>
-                    <Ionicons name="location" size={14} color="#888" />
-                    <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
+                    {item.distance !== undefined && item.distance !== Infinity && (
+                        <View style={styles.distanceBadge}>
+                            <Ionicons name="navigate" size={10} color="#1565C0" />
+                            <Text style={styles.distanceText}>
+                                {formatNumber(item.distance.toFixed(1))} {t('km_short')}
+                            </Text>
+                        </View>
+                    )}
+                    <View style={styles.locationContainer}>
+                        <Ionicons name="location" size={14} color="#888" />
+                        <Text style={styles.cardLocation} numberOfLines={1}>{item.location}</Text>
+                    </View>
+                    {availabilityMap[item.id] && (
+                        <View style={[styles.availBadge, availabilityMap[item.id] === 'busy' ? styles.availBusy : styles.availFree]}>
+                            <Text style={styles.availText}>
+                                {availabilityMap[item.id] === 'busy' ? (t('busy') || 'BUSY') : (t('available') || 'FREE')}
+                            </Text>
+                        </View>
+                    )}
                 </View>
             </View>
-        </View>
-        <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
-            <StarRating rating={item.avg_rating} count={item.review_count} />
-        </View>
-    </TouchableOpacity>
-);
+            <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
+                <StarRating rating={item.avg_rating} count={item.review_count} />
+            </View>
+        </TouchableOpacity>
+    );
 
     return (
         <SafeAreaView style={styles.safeArea}>
@@ -402,20 +447,20 @@ export default function HomeScreen({ navigation }) {
                 onEndReachedThreshold={0.5}
                 ListFooterComponent={renderFooter}
                 ListEmptyComponent={
-    !loading && (
-        <View style={styles.emptyContainer}>
-            <Ionicons name="business-outline" size={60} color="#D0D0D0" />
-            <Text style={styles.emptyTitle}>{t('empty_home_title')}</Text>
-            <Text style={styles.emptyText}>
-                {activeCategory !== 'All' ? t('empty_category_sub') : t('empty_home_sub')}
-            </Text>
-            <TouchableOpacity style={styles.emptyBtn} onPress={() => setLocationModalVisible(true)}>
-                <Ionicons name="location-outline" size={16} color="#fff" />
-                <Text style={styles.emptyBtnText}>{t('change_location')}</Text>
-            </TouchableOpacity>
-        </View>
-    )
-}
+                    !loading && (
+                        <View style={styles.emptyContainer}>
+                            <Ionicons name="business-outline" size={60} color="#D0D0D0" />
+                            <Text style={styles.emptyTitle}>{t('empty_home_title')}</Text>
+                            <Text style={styles.emptyText}>
+                                {activeCategory !== 'All' ? t('empty_category_sub') : t('empty_home_sub')}
+                            </Text>
+                            <TouchableOpacity style={styles.emptyBtn} onPress={() => setLocationModalVisible(true)}>
+                                <Ionicons name="location-outline" size={16} color="#fff" />
+                                <Text style={styles.emptyBtnText}>{t('change_location')}</Text>
+                            </TouchableOpacity>
+                        </View>
+                    )
+                }
             />
 
             <Modal visible={locationModalVisible} animationType="fade" transparent={true} onRequestClose={() => setLocationModalVisible(false)}>
@@ -481,9 +526,13 @@ const styles = StyleSheet.create({
     cardTitle: { fontSize: 18, fontWeight: '800', color: '#13294B', flex: 1, marginEnd: 10, letterSpacing: 0.2 },
     cardPrice: { fontSize: 16, fontWeight: '800', color: '#E8751A' },
     cardBody: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' },
-   badge: { backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginBottom: 4 },
+    badge: { backgroundColor: '#13294B', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 6, marginBottom: 4 },
     badgeText: { fontSize: 10, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5, textAlign: 'center' },
-   distanceBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginStart: 8, marginBottom: 4 },
+    distanceBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E3F2FD', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginStart: 8, marginBottom: 4 },
+    availBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginStart: 8, marginBottom: 4 },
+    availBusy: { backgroundColor: '#FFEBEE' },
+    availFree: { backgroundColor: '#E8F5E9' },
+    availText: { fontSize: 10, fontWeight: '900', letterSpacing: 0.5, color: '#333' },
     distanceText: { fontSize: 10, fontWeight: '800', color: '#1565C0', marginStart: 3 },
     locationContainer: { flexDirection: 'row', alignItems: 'center', flexShrink: 1, marginStart: 10, marginBottom: 4 },
     cardLocation: { fontSize: 13, color: '#555555', marginStart: 4, flexShrink: 1, fontWeight: '600' },
@@ -502,8 +551,8 @@ const styles = StyleSheet.create({
     useCurrentBtnText: { color: '#13294B', fontWeight: 'bold', fontSize: 14 },
     skeletonBlock: { backgroundColor: '#D4D0C8' },
     emptyContainer: { alignItems: 'center', marginTop: 60, paddingHorizontal: 30 },
-emptyTitle: { fontSize: 20, fontWeight: '800', color: '#13294B', marginTop: 20, textAlign: 'center', marginBottom: 10 },
-emptyText: { textAlign: 'center', fontSize: 14, color: '#888888', fontWeight: '500', lineHeight: 22, marginBottom: 24 },
-emptyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8751A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, gap: 8 },
-emptyBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
+    emptyTitle: { fontSize: 20, fontWeight: '800', color: '#13294B', marginTop: 20, textAlign: 'center', marginBottom: 10 },
+    emptyText: { textAlign: 'center', fontSize: 14, color: '#888888', fontWeight: '500', lineHeight: 22, marginBottom: 24 },
+    emptyBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#E8751A', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10, gap: 8 },
+    emptyBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
 });
