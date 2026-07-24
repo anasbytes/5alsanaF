@@ -421,7 +421,7 @@ export default function FacilityDetailsScreen({ route, navigation }) {
                 },
                 body: JSON.stringify({
                     facility_id: facility.id,
-                    room_id: selectedRoom?.id,
+                    room_id: selectedRoom?.id ?? null,
                     booking_date: selectedDate,
                     start_time: dbStartTime,
                     end_time: dbEndTime,
